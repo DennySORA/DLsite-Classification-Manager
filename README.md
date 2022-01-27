@@ -26,6 +26,34 @@ This is high-performance auto DLsite Classification Tools.
 
 ## Demo
 
+![](https://i.imgur.com/ujGpI3n.png)
+
+![](https://i.imgur.com/qLetybT.png)
+
+![](https://i.imgur.com/QaczCQf.png)
+
+![](https://i.imgur.com/wgbL8JZ.png)
+
+![](https://i.imgur.com/rEY9rEP.png)
+
+![](https://i.imgur.com/H0hEYc9.png)
+
+![](https://i.imgur.com/nFGlP6o.png)
+
+![](https://i.imgur.com/wiZkXgn.png)
+
+![](https://i.imgur.com/mKW4mik.png)
+
+![](https://i.imgur.com/65HvnSc.png)
+
+![](https://i.imgur.com/kUZJNSE.png)
+
+![](https://i.imgur.com/AulvZJI.png)
+
+![](https://i.imgur.com/Hz2ymjI.png)
+
+![](https://i.imgur.com/vIBrrcg.png)
+
 ---
 
 ## TODO
