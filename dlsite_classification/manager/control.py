@@ -15,8 +15,9 @@ async def user_control():
         2: Extract folder move to top.
         3: Auto classification.
         4: Update work info.
-        5: Compare folder name.
-        6: Compare file hash.
+        5: Update work or company folder name.
+        6: Compare folder name.
+        7: Compare file hash.
         """)
         Green(print, "\t-1: Exit.\n\n")
         try:
@@ -42,6 +43,8 @@ async def user_select(select):
     elif select == 4:
         await work_update_func()
     elif select == 5:
-        await compare_folder_name_func()
+        await work_update_func(is_rename=1)
     elif select == 6:
+        await compare_folder_name_func()
+    elif select == 7:
         await compare_file_hash_func()

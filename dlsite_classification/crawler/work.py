@@ -3,8 +3,8 @@ import logging
 from bs4 import BeautifulSoup
 
 from dlsite_classification.common.regex import REGEX_RJ
-from dlsite_classification.common.dlsite import RJ_WEBPATH, BJ_WEBPATH, VJ_WEBPATH, GAME_LIST_TYPE
-from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red, Yellow
+from dlsite_classification.common.dlsite import RJ_WEBPATH, BJ_WEBPATH, VJ_WEBPATH
+from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red
 from .common import CommonCrawler
 
 
@@ -16,7 +16,7 @@ class DLsiteWorkCrawler:
 
         self.html = None
         self.bs4 = None
-        self.info = list()
+        self.info:dict = dict()
 
     def _get_dlsite_url(self):
         url = ''
@@ -86,7 +86,7 @@ class DLsiteWorkCrawler:
             tag_table.th.text:
                 [
                     tag.strip()
-                    for tag in tag_table.td.text.split('\n')
+                    for tag in tag_table.td.text.split()
                     if tag.strip() != ''
                 ]
             for tag_table in tag_list

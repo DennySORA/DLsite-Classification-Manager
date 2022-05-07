@@ -8,17 +8,13 @@ from dlsite_classification.spkg.sasync import SAsyncRunner
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red
 
 
-async def work_update_func(path=None,is_rename=0):
+async def company_update_func(path=None):
     if path is None:
         path = input("Input path:")
-    if is_rename == 1:
-        is_rename = 2 if input("Is change company folder name? [Y/n](default is n, is change work name.):") == 'Y' else 1
-
     # Classification path folder
     extract_folder = ExtractFolder(path)
     use_time = await extract_folder.scan_file()
     Green(logging.info, f"Extracting Use Time: {use_time}")
-
     work = []
     for i in extract_folder_path(extract_folder.get_all_table()):
         temp = Folder(i)
@@ -41,7 +37,7 @@ async def work_update_func(path=None,is_rename=0):
         if code == '':
             continue
         i.use_crawler(DLsiteWorkCrawler(code=code))
-        await read_queue.put(file_doing_manager_wrap(i,is_rename))
+        await read_queue.put(file_doing_manager_wrap(i))
         Green(logging.info, f"Create {code} DLsite Crawler.")
     Blue(logging.info, "==========End Create Can Crawler Folder==========")
 
@@ -51,23 +47,14 @@ async def work_update_func(path=None,is_rename=0):
     await sasync.run(need_run_func_count)
 
 
-def file_doing_manager_wrap(folder:Folder,is_rename:int):
+def file_doing_manager_wrap(folder):
     folder_class = folder
 
     async def doing():
         try:
-            if folder_class.crawler is None:
-                raise Exception("Not use crawler.")
-            try:
-                await folder_class.crawler.get_use_code()
-            except ValueError:
-                await folder_class.set_request_failed()
-                return
+            await folder_class.crawler.get_use_code()
             folder_class.get_info()
-            if is_rename != 0:
-                await folder_class.rename(is_rename == 2)
-            else:
-                await folder_class.classify(False)
+            await folder_class.classify(False)
         except BaseException as e:
             Red(logging.error, e)
     return doing
