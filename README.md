@@ -3,6 +3,9 @@
 高效率 DLsite 分類器
 This is high-performance auto DLsite Classification Tools.
 
+PS. 最近有點懶，有些功能還很陽春，或者就是我知道怎麼正確使用……
+    這點請多多包含，遇到問題直接發問就好～（寄信給我也OK喔）
+
 ## Features
 
 - Use async request and file read/write.
@@ -62,7 +65,3 @@ This is high-performance auto DLsite Classification Tools.
 
 ### API system
 
-### Classification
-
-- [ ] Add company work list.
-- [ ] Add auto-get keyword search code.
