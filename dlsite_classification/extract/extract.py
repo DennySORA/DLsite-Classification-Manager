@@ -16,9 +16,9 @@ from .structure import Company, Work, WorkInfo, Tag, conversion_table
 
 
 class ExtractFolder:
-    classification_table: OrderedDict[str, Company] = OrderedDict()
 
     def __init__(self, path: str):
+        self.classification_table: OrderedDict[str, Company] = OrderedDict()
         self.path = path
         self.scan_count = 0
 
@@ -35,7 +35,7 @@ class ExtractFolder:
             data = (await raed_data(val)).split('\n')
             if eng_name in ["company", 'title']:
                 temp[eng_name] = {data[0]: data[1]}
-            elif eng_name in ["introduction", "code"]:
+            elif eng_name in ["introduction", "code","request_failed"]:
                 temp[eng_name] = "\n".join(data)
             elif eng_name in ["star"]:
                 temp[eng_name] = (
@@ -70,19 +70,18 @@ class ExtractFolder:
     async def _scan(self, origin_folder_path):
         if not REGEX_COMPANY_FOLDER.match(origin_folder_path):
             return
-        company_name = origin_folder_path[1:-1]
         company_folder_path = os.path.join(
             self.path,
             origin_folder_path
         )
-        Cyan(logging.info, f"Extracting {company_name}")
+        Cyan(logging.info, f"Extracting {origin_folder_path}")
         work_item = await self.scan_company(company_folder_path)
-        self.classification_table[company_name] = Company(
-            name=company_name,
+        self.classification_table[origin_folder_path] = Company(
+            name=origin_folder_path,
             path=company_folder_path,
             work_item=work_item
         )
-        Green(logging.info, f"Extract Finish {company_name}")
+        Green(logging.info, f"Extract Finish {origin_folder_path}")
 
     def _scan_wrap(self, origin_folder_path):
         async def doing():
@@ -112,7 +111,10 @@ class ExtractFolder:
                 continue
             code = code[0]
             work_folder_path = os.path.join(path, work_folder)
-            info_data = await self.scan_work(work_folder_path, code)
+            try:
+                info_data = await self.scan_work(work_folder_path, code)
+            except:
+                info_data = None
             result[work_folder] = Work(
                 name=name,
                 path=work_folder_path,

@@ -8,6 +8,7 @@ conversion_table = {
     "company": "company",
     "star": "star",
     "introduction": "introduction",
+    "request_failed":"request_failed",
     "シリーズ名": "series",
     "ジャンル": "genre",
     "ファイル容量": "file_capacity",
@@ -35,6 +36,7 @@ class Tag(BaseModel):
     title: Optional[dict[str, Any]]
     company: Optional[dict[str, Any]]
     introduction: Optional[str]
+    request_failed: Optional[str]
 
     # シリーズ名 - Series name
     series: Optional[dict[str, Any]]
@@ -84,7 +86,7 @@ class Work(BaseModel):
     path: str
     code: str
     name: str
-    info: WorkInfo
+    info: Optional[WorkInfo] = None
 
 
 class Company(BaseModel):

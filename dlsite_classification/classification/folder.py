@@ -4,14 +4,16 @@ import shutil
 import logging
 import asyncio
 
+from typing import Optional
 from os import path as os_path
 
 from dlsite_classification.tools import check_and_make_folder, save_data, replace_file_name, check_folder_has_file, merge_folder_name_move
-from dlsite_classification.common.regex import REGEX_RJ
+from dlsite_classification.common.regex import REGEX_RJ, REGEX_RG
 from dlsite_classification.spkg.logs import Blue, Cyan, Yellow, Red
 
 
 class Folder:
+
     def __init__(self, path: str):
         self._get_path(path)
 
@@ -43,7 +45,7 @@ class Folder:
         file_path = os_path.join(info_folder_path, file_name)
         await save_data(file_path, '\n'.join(data))
 
-    async def _save_images(self, path: str, images: list = None):
+    async def _save_images(self, path: str, images: Optional[list] = None):
         if images is None:
             images = self.file_info.get('images', None)
         if images is None:
@@ -60,6 +62,29 @@ class Folder:
                 ) for i in images
             ]
         )
+
+    def _get_rename(self, code: str, is_company: bool = False) -> str:
+
+        # Get Title and company
+        title = self.file_info.get('title', list())[0]
+        company = self.file_info.get('company', list())
+        company_name = company[0]
+        company_code_name = REGEX_RG.findall(company[1])[0].replace("\n", "")
+
+        if is_company:
+            return os_path.join(
+                os_path.split(self.root_path)[0],
+                replace_file_name(
+                    f'[{company_name}]_[{company_code_name}]'
+                )
+            )
+        else:
+            return os_path.join(
+                self.root_path,
+                replace_file_name(
+                    f'[{code}]_[{company_name}]_[{company_code_name}] {title}'
+                )
+            )
 
     # ---------------------------------------
     # ---------------------------------------
@@ -82,7 +107,7 @@ class Folder:
             new_name = self.folder_name
         new_path = os_path.join(code_path, new_name)
 
-        if os.path.isdir(new_path):
+        if os_path.isdir(new_path):
             duplicate_path = os_path.join(
                 self.root_path,
                 "duplicate"
@@ -94,7 +119,7 @@ class Folder:
             )
 
         try:
-            file = open(os.path.join(
+            file = open(os_path.join(
                 self.path,
                 ".dlsite_classification.path.old"
             ), "a+", encoding="utf-8")
@@ -147,8 +172,21 @@ class Folder:
             if is_move:
                 self.move_to('other')
             return 'other'
+    
+    async def set_request_failed(self):
+        if self.crawler is None:
+            raise Exception("Not use crawler.")
+        code = self.crawler.code
+        info_folder_path = os_path.join(self.path, code+'_info')
+        await self._save_tag(
+            info_folder_path, 
+            f'request_failed', 
+            f'Request Failed :{time.time()}'
+        )
 
     def get_info(self) -> bool:
+        if self.crawler is None:
+            raise Exception("Not use crawler.")
         self.file_info = self.crawler.get_info()
         if self.file_info is None:
             return False
@@ -157,10 +195,6 @@ class Folder:
     async def classify(self, is_move=True):
         Cyan(logging.info,
              f"==========Start Classify Folder in {self.path}==========")
-
-        def get(name) -> list:
-            return self.file_info.get(name, list())
-
         # Create info folder
         code = self.file_info.get('code', '')
         info_folder_path = os_path.join(self.path, code+'_info')
@@ -176,22 +210,23 @@ class Folder:
                 for key, val in self.file_info.items() if key != 'images'
             ]
         )
+        
+        if is_move:
+            # Move folder
+            self.move_to(self.path, self._get_rename(code))
 
-        if not is_move:
-            return
-
-        # Get info
-        title = get('title')
-        company = get('company')
-        file_name = replace_file_name(
-            f'[{code}][{company[0]}] {title[0]}'
-        )
-        file_path = os_path.join(self.root_path, file_name)
-
-        # Move folder
-        self.move_to(self.path, file_path)
         Blue(logging.info,
              f"==========End Classify Folder in {self.path}==========")
+
+    async def rename(self, is_company:bool=False):
+        code = self.file_info.get('code', '')
+
+        if is_company:
+            path = self._get_rename(code, True)
+            if not os_path.exists(path):
+                os.rename(self.root_path, path)
+        else:
+            os.rename(self.path, self._get_rename(code))
 
     def finish(self):
         Cyan(logging.info,
@@ -201,8 +236,9 @@ class Folder:
         if len(company) == 0:
             Yellow(logging.warning, "Not company in {self.path}")
             return
-        file_name = replace_file_name(company[0])
-        new_root_path = f'{root}[{file_name}]'
+        company_name = replace_file_name(company[0])
+        company_code_name = REGEX_RG.findall(company[1])[0].replace("\n", "")
+        new_root_path = f'{root}[{company_name}]_[{company_code_name}]'
         check_and_make_folder(new_root_path)
         self.move_to(new_root_path)
         Blue(logging.info,
