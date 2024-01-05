@@ -4,12 +4,12 @@ async-timeout==3.0.1
 attrs==21.2.0
 autopep8==1.5.7
 beautifulsoup4==4.9.3
-caio==0.8.1
+caio
 certifi==2020.12.5
 chardet==4.0.0
 coverage==5.5
 idna==2.10
-lxml==4.6.3
+lxml
 multidict==5.1.0
 pycodestyle==2.7.0
 requests==2.25.1
@@ -18,4 +18,5 @@ toml==0.10.2
 typing-extensions==3.10.0.0
 urllib3==1.26.5
 wincertstore==0.2
-yarl==1.6.3
+yarl
+pydantic

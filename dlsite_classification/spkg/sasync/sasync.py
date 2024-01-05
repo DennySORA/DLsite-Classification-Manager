@@ -14,9 +14,6 @@ class SAsync:
         else:
             self.loop = loop
         # -----------------------
-        if self.add_signal():
-            return None
-        # -----------------------
         self.main_run = main_run
 
     def stop_loop_on_completion(self, f):
