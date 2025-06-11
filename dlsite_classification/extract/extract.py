@@ -42,6 +42,12 @@ class ExtractFolder:
                     int(data[0]),
                     data[1] if len(data) == 2 else ""
                 )
+            elif eng_name in ["my_rating", "my_collection"]:
+                # User custom fields should be stored as strings, not dicts
+                temp[eng_name] = "\n".join(data).strip() if data else None
+            elif eng_name == "my_collections":
+                # Multiple collections stored as list
+                temp[eng_name] = [item.strip() for item in data if item.strip()] if data else None
             else:
                 temp[eng_name] = {i: True for i in data}
             self.scan_count -= 1
@@ -139,7 +145,27 @@ class ExtractFolder:
             tag = await self.make_tag(tags)
         except Exception as e:
             logging.error(f"{path} - Error {e}")
-            raise e
+            # Create a minimal tag with available data
+            minimal_data = {}
+            for name, val in tags.items():
+                try:
+                    eng_name = conversion_table.get(name)
+                    data = (await raed_data(val)).split('\n')
+                    if eng_name in ["company", 'title']:
+                        minimal_data[eng_name] = {data[0]: data[1]} if len(data) > 1 else {data[0]: ""}
+                    elif eng_name in ["introduction", "code", "request_failed"]:
+                        minimal_data[eng_name] = "\n".join(data)
+                    elif eng_name in ["star"]:
+                        try:
+                            minimal_data[eng_name] = (int(data[0]), data[1] if len(data) == 2 else "")
+                        except:
+                            minimal_data[eng_name] = None
+                    else:
+                        minimal_data[eng_name] = {i: True for i in data if i.strip()}
+                except Exception as field_error:
+                    logging.warning(f"Failed to process field {name}: {field_error}")
+                    continue
+            tag = Tag(**minimal_data)
         work_info = WorkInfo(
             path=path,
             images=images,
