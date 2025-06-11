@@ -105,6 +105,13 @@ yarn preview
 - **作品詳情**: 點擊作品卡片查看詳細信息
 - **評分收藏**: 在作品詳情中設置個人評分和收藏分類
 
+### 📸 Web 界面預覽
+
+![Web Demo 1](doc/1.png)
+![Web Demo 2](doc/2.png)
+![Web Demo 3](doc/3.png)
+![Web Demo 4](doc/4.png)
+
 ### 📊 數據格式
 
 項目使用標準化的數據格式存儲作品信息：
