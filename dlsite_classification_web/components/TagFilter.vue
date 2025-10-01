@@ -66,12 +66,12 @@
     </div>
 
     <!-- 已選標籤 -->
-    <div class="px-6 pb-4 flex-shrink-0 h-24 min-h-24">
-      <div v-if="selectedTags.length > 0" class="h-full">
+    <div class="px-6 pb-4 flex-shrink-0">
+      <div v-if="selectedTags.length > 0">
         <div class="flex items-center justify-between mb-2">
           <label class="block text-sm font-medium text-text-secondary">已選標籤 ({{ selectedTags.length }})</label>
-          <button 
-            @click="clearSelectedTags" 
+          <button
+            @click="clearSelectedTags"
             class="px-3 py-1.5 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white text-xs font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center space-x-1"
           >
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,13 +80,13 @@
             <span>清除全部</span>
           </button>
         </div>
-        <div class="grid grid-cols-5 gap-2 h-16 overflow-y-auto scrollbar-thin">
-          <div 
-            v-for="tag in selectedTags" 
+        <div class="grid grid-cols-5 gap-2 max-h-20 overflow-y-auto scrollbar-thin">
+          <div
+            v-for="tag in selectedTags"
             :key="tag"
-            class="flex items-center justify-between px-2 py-1 rounded-lg text-xs font-medium h-6"
-            :class="filterMode === 'AND' 
-              ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-sm border border-violet-400' 
+            class="flex items-center justify-between px-2 py-1 rounded-lg text-xs font-medium h-7"
+            :class="filterMode === 'AND'
+              ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-sm border border-violet-400'
               : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm border border-blue-400'"
           >
             <span class="flex-1 truncate pr-1 text-xs">{{ tag }}</span>
@@ -98,33 +98,33 @@
           </div>
         </div>
       </div>
-      <div v-else class="h-full flex items-center justify-center text-sm text-text-muted">
+      <div v-else class="py-3 flex items-center justify-center text-sm text-text-muted">
         選擇標籤來開始篩選...
       </div>
     </div>
 
     <!-- 可選標籤控制 -->
-    <div class="px-6 space-y-3 flex-1 min-h-0" :style="{ marginBottom: showComboPanel ? '0' : '4px' }">
-      <div class="flex items-center justify-between">
+    <div class="px-6 pb-3 space-y-3 flex-1 min-h-0 flex flex-col">
+      <div class="flex items-center justify-between flex-shrink-0">
         <label class="block text-sm font-medium text-text-secondary">
           可選標籤 ({{ filteredTags.length }})
         </label>
       </div>
-      
+
       <!-- 分類選擇 -->
-      <div class="space-y-2">
+      <div class="space-y-2 flex-shrink-0">
         <button
           @click="selectedCategory = 'all'"
           :class="[
             'w-full px-3 py-2 text-sm rounded-lg transition-all duration-200 font-multilingual text-left',
-            selectedCategory === 'all' 
-              ? 'bg-blue-600 text-white' 
+            selectedCategory === 'all'
+              ? 'bg-blue-600 text-white'
               : 'bg-gray-700 text-text-muted hover:bg-gray-600'
           ]"
         >
           🏷️ 全部分類
         </button>
-        
+
         <div class="grid grid-cols-6 gap-2">
           <button
             v-for="(category, key) in tagCategories"
@@ -132,8 +132,8 @@
             @click="toggleCategory(key)"
             :class="[
               'px-2 py-2 text-sm rounded-xl transition-all duration-300 flex flex-col items-center justify-center font-multilingual min-h-14 transform hover:scale-105',
-              selectedCategory === key 
-                ? 'bg-gradient-to-br from-yellow-400 via-yellow-300 to-yellow-400 text-yellow-900 shadow-xl ring-2 ring-yellow-300 ring-opacity-60 font-semibold' 
+              selectedCategory === key
+                ? 'bg-gradient-to-br from-yellow-400 via-yellow-300 to-yellow-400 text-yellow-900 shadow-xl ring-2 ring-yellow-300 ring-opacity-60 font-semibold'
                 : 'bg-gradient-to-br from-green-400 via-green-300 to-green-400 text-green-900 hover:from-green-500 hover:via-green-400 hover:to-green-500 hover:text-green-100 shadow-lg backdrop-blur-sm'
             ]"
             :title="category.name"
@@ -143,25 +143,22 @@
           </button>
         </div>
       </div>
-      
+
       <!-- 標籤列表 -->
-      <div :class="[
-        'overflow-y-auto scrollbar-thin transition-all duration-300',
-        showComboPanel ? 'max-h-48' : 'max-h-64'
-      ]">
+      <div class="overflow-y-auto scrollbar-thin flex-1">
         <div v-if="categorizedFilteredTags.length === 0" class="text-center py-4 text-text-muted text-sm">
           沒有找到符合的標籤
         </div>
-        
+
         <div v-else class="grid grid-cols-7 gap-2 pb-2">
-          <button 
-            v-for="tag in categorizedFilteredTags.slice(0, 140)" 
+          <button
+            v-for="tag in categorizedFilteredTags.slice(0, 140)"
             :key="tag.name"
             :class="[
               'px-2 py-2 rounded-lg transition-all duration-300 flex flex-col items-center justify-center font-multilingual min-h-16 text-center transform hover:scale-105',
-              selectedTags.includes(tag.name) 
-                ? (filterMode === 'AND' 
-                  ? 'bg-gradient-to-br from-fuchsia-600 to-violet-700 border border-fuchsia-400 text-white shadow-xl ring-2 ring-white ring-opacity-20' 
+              selectedTags.includes(tag.name)
+                ? (filterMode === 'AND'
+                  ? 'bg-gradient-to-br from-fuchsia-600 to-violet-700 border border-fuchsia-400 text-white shadow-xl ring-2 ring-white ring-opacity-20'
                   : 'bg-gradient-to-br from-blue-600 to-indigo-700 border border-blue-400 text-white shadow-xl ring-2 ring-white ring-opacity-20')
                 : 'bg-gradient-to-br from-slate-600 to-slate-700 text-slate-200 hover:from-slate-500 hover:to-slate-600 hover:text-white shadow-lg border border-slate-500 hover:border-slate-400'
             ]"
@@ -235,22 +232,22 @@
         <div v-if="savedCombos.length > 0" class="px-6 py-4 border-b border-gray-600">
           <div class="space-y-3">
             <label class="text-sm font-medium text-text-secondary">已儲存組合 ({{ savedCombos.length }})</label>
-            <div class="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto scrollbar-thin">
-              <div 
-                v-for="combo in savedCombos" 
+            <div class="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto scrollbar-thin">
+              <div
+                v-for="combo in savedCombos"
                 :key="combo.id"
-                class="flex items-center justify-between bg-blue-500 bg-opacity-20 border border-blue-400 border-opacity-40 text-blue-300 px-3 py-2 rounded-lg shadow-sm backdrop-blur-sm hover:bg-opacity-30 transition-all duration-200"
+                class="flex items-center justify-between bg-blue-500 bg-opacity-20 border border-blue-400 border-opacity-40 text-blue-300 px-3 py-2.5 rounded-lg shadow-sm backdrop-blur-sm hover:bg-opacity-30 transition-all duration-200"
               >
-                <button 
+                <button
                   @click="loadTagCombo(combo)"
                   class="flex-1 text-left hover:text-white transition-colors min-w-0"
                 >
                   <div class="text-sm font-medium truncate">{{ combo.name }}</div>
-                  <div class="text-xs opacity-75">{{ combo.tags.length }} 標籤 • {{ combo.mode }}</div>
+                  <div class="text-xs opacity-75 mt-0.5">{{ combo.tags.length }} 標籤 • {{ combo.mode }}</div>
                 </button>
-                <button 
+                <button
                   @click="deleteTagCombo(combo.id)"
-                  class="flex items-center justify-center w-6 h-6 hover:bg-red-500 hover:bg-opacity-20 rounded-full transition-colors group ml-2 flex-shrink-0"
+                  class="flex items-center justify-center w-7 h-7 hover:bg-red-500 hover:bg-opacity-20 rounded-full transition-colors group ml-2 flex-shrink-0"
                 >
                   <svg class="w-4 h-4 text-red-400 group-hover:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
