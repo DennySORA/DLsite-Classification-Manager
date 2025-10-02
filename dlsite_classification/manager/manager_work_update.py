@@ -8,21 +8,40 @@ from dlsite_classification.spkg.sasync import SAsyncRunner
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red
 
 
-async def work_update_func(path=None,is_rename=0):
+async def work_update_func(path=None, is_rename=0):
     if path is None:
         path = input("Input path:")
     if is_rename == 1:
-        is_rename = 2 if input("Is change company folder name? [Y/n](default is n, is change work name.):") == 'Y' else 1
+        is_rename = (
+            2
+            if input(
+                "Is change company folder name? [Y/n](default is n, is change work name.):"
+            )
+            == "Y"
+            else 1
+        )
 
     # Ask about tag merging
     merge_tags = False
     if is_rename == 0:  # Only ask when updating info, not renaming
-        merge_input = input("Merge old tags with new tags? [Y/n](default is n, will replace all tags.): ").strip().upper()
-        merge_tags = (merge_input == 'Y')
+        merge_input = (
+            input(
+                "Merge old tags with new tags? [Y/n](default is n, will replace all tags.): "
+            )
+            .strip()
+            .upper()
+        )
+        merge_tags = merge_input == "Y"
         if merge_tags:
-            Green(logging.info, "Tag merging enabled: Old tags will be preserved and merged with new tags")
+            Green(
+                logging.info,
+                "Tag merging enabled: Old tags will be preserved and merged with new tags",
+            )
         else:
-            Cyan(logging.info, "Tag merging disabled: New tags will replace old tags (user custom tags will still be preserved)")
+            Cyan(
+                logging.info,
+                "Tag merging disabled: New tags will replace old tags (user custom tags will still be preserved)",
+            )
 
     # Classification path folder
     extract_folder = ExtractFolder(path)
@@ -47,11 +66,11 @@ async def work_update_func(path=None,is_rename=0):
     Cyan(logging.info, "==========Start Create Can Crawler Folder ==========")
     # create crawler and injection to file class
     for i in work:
-        code = i.file_info.get('code', '')
-        if code == '':
+        code = i.file_info.get("code", "")
+        if code == "":
             continue
         i.use_crawler(DLsiteWorkCrawler(code=code))
-        await read_queue.put(file_doing_manager_wrap(i,is_rename,merge_tags))
+        await read_queue.put(file_doing_manager_wrap(i, is_rename, merge_tags))
         Green(logging.info, f"Create {code} DLsite Crawler.")
     Blue(logging.info, "==========End Create Can Crawler Folder==========")
 
@@ -61,7 +80,7 @@ async def work_update_func(path=None,is_rename=0):
     await sasync.run(need_run_func_count)
 
 
-def file_doing_manager_wrap(folder:Folder,is_rename:int,merge_tags:bool=False):
+def file_doing_manager_wrap(folder: Folder, is_rename: int, merge_tags: bool = False):
     folder_class = folder
 
     async def doing():
@@ -80,4 +99,5 @@ def file_doing_manager_wrap(folder:Folder,is_rename:int,merge_tags:bool=False):
                 await folder_class.classify(False, merge_tags)
         except BaseException as e:
             Red(logging.error, e)
+
     return doing

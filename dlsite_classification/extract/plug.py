@@ -1,4 +1,3 @@
-
 from .structure import Company
 
 

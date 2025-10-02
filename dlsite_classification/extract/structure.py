@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 from typing import Any, Optional, List
 
@@ -8,7 +7,7 @@ conversion_table = {
     "company": "company",
     "star": "star",
     "introduction": "introduction",
-    "request_failed":"request_failed",
+    "request_failed": "request_failed",
     "シリーズ名": "series",
     "ジャンル": "genre",
     "ファイル容量": "file_capacity",
@@ -78,7 +77,7 @@ class Tag(BaseModel):
     other: Optional[dict[str, Any]] = None
     # 対応言語 - Supported languages
     languages: Optional[dict[str, Any]] = None
-    
+
     # User custom fields
     my_rating: Optional[str] = None  # User's personal rating (1-5 stars)
     my_collection: Optional[str] = None  # User's collection category

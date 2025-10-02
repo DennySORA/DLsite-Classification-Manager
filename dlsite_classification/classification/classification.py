@@ -3,7 +3,12 @@ import logging
 
 from os import path as os_path
 
-from dlsite_classification.tools import move_subfolder, move_folder, search_file_code, extract_folder_top
+from dlsite_classification.tools import (
+    move_subfolder,
+    move_folder,
+    search_file_code,
+    extract_folder_top,
+)
 from dlsite_classification.common.regex import REGEX_COMPANY_FOLDER
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Yellow
 
@@ -24,25 +29,16 @@ def classification_folder(root_path: str) -> list:
     def check_in_move(check, check_point, origin_path):
         for i in check:
             if i in check_point:
-                move_subfolder(
-                    os_path.join(origin_path, i),
-                    origin_path,
-                    True
-                )
+                move_subfolder(os_path.join(origin_path, i), origin_path, True)
 
     def check_wait():
-        wait_path = os_path.join(root_path, 'wait')
+        wait_path = os_path.join(root_path, "wait")
         if not os_path.isdir(wait_path):
             Yellow(logging.info, "Not Wait Folder.")
             return
         folder_content = os.listdir(wait_path)
-        check_in_move(folder_content, ['code', 'other'], wait_path)
-        create_folder_obj(
-            [
-                os_path.join(wait_path, i)
-                for i in os.listdir(wait_path)
-            ]
-        )
+        check_in_move(folder_content, ["code", "other"], wait_path)
+        create_folder_obj([os_path.join(wait_path, i) for i in os.listdir(wait_path)])
 
     root_folder = os.listdir(root_path)
     if len(root_folder) == 0:
@@ -51,17 +47,12 @@ def classification_folder(root_path: str) -> list:
     check_wait()
 
     for i in root_folder:
-        if i in [
-            'finish', 'not_classification',
-            'look_like_finish', 'null', 'wait'
-        ]:
+        if i in ["finish", "not_classification", "look_like_finish", "null", "wait"]:
             continue
         elif REGEX_COMPANY_FOLDER.match(i):
-            move_folder(root_path, 'look_like_finish', i)
+            move_folder(root_path, "look_like_finish", i)
         else:
-            create_folder_obj(
-                [move_folder(root_path, 'wait', i)]
-            )
+            create_folder_obj([move_folder(root_path, "wait", i)])
     Blue(logging.info, "==========End Classification Folder==========")
     return need_classification_folder
 
