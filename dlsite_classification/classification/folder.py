@@ -9,7 +9,7 @@ from os import path as os_path
 
 from dlsite_classification.tools import check_and_make_folder, save_data, replace_file_name, check_folder_has_file, merge_folder_name_move
 from dlsite_classification.common.regex import REGEX_RJ, REGEX_RG
-from dlsite_classification.spkg.logs import Blue, Cyan, Yellow, Red
+from dlsite_classification.spkg.logs import Blue, Cyan, Yellow, Red, Green
 
 
 class Folder:
@@ -62,6 +62,30 @@ class Folder:
                 ) for i in images
             ]
         )
+
+    async def _merge_old_tags(self, new_info_path: str, old_tags: dict):
+        """Merge old tags with new tags, preserving unique values"""
+        Blue(logging.info, f"Merging old tags with new tags for {self.folder_name}")
+        for tag_file, old_values in old_tags.items():
+            new_tag_path = os_path.join(new_info_path, tag_file)
+            if os_path.isfile(new_tag_path):
+                try:
+                    # Read new values
+                    with open(new_tag_path, 'r', encoding='utf-8') as f:
+                        new_values = f.read().strip().split('\n')
+
+                    # Merge: preserve order, add old values that are not in new values
+                    merged_values = new_values.copy()
+                    for old_val in old_values:
+                        if old_val.strip() and old_val not in new_values:
+                            merged_values.append(old_val)
+
+                    # Write merged values back
+                    with open(new_tag_path, 'w', encoding='utf-8') as f:
+                        f.write('\n'.join(merged_values))
+                    Blue(logging.info, f"Merged tag file {tag_file}")
+                except Exception as e:
+                    Yellow(logging.warning, f"Failed to merge tag {tag_file}: {e}")
 
     def _get_rename(self, code: str, is_company: bool = False) -> str:
 
@@ -192,25 +216,84 @@ class Folder:
             return False
         return True
 
-    async def classify(self, is_move=True):
+    async def classify(self, is_move=True, merge_tags=False):
         Cyan(logging.info,
              f"==========Start Classify Folder in {self.path}==========")
         # Create info folder
         code = self.file_info.get('code', '')
         info_folder_path = os_path.join(self.path, code+'_info')
-        if os_path.isdir(info_folder_path):
-            shutil.rmtree(info_folder_path)
-        check_and_make_folder(info_folder_path)
+        temp_info_folder_path = os_path.join(self.path, code+'_info_temp')
 
-        # Save data
-        await asyncio.gather(
-            self._save_images(info_folder_path),
-            *[
-                self._save_tag(info_folder_path, key, val)
-                for key, val in self.file_info.items() if key != 'images'
-            ]
-        )
-        
+        # User custom tag files to preserve
+        user_custom_tags = ['my_rating.tag', 'my_collection.tag', 'my_collections.tag']
+
+        # Save old user custom tags if they exist
+        old_user_tags = {}
+        if os_path.isdir(info_folder_path):
+            for tag_file in user_custom_tags:
+                old_tag_path = os_path.join(info_folder_path, tag_file)
+                if os_path.isfile(old_tag_path):
+                    try:
+                        with open(old_tag_path, 'r', encoding='utf-8') as f:
+                            old_user_tags[tag_file] = f.read()
+                    except Exception as e:
+                        Yellow(logging.warning, f"Failed to read old tag {tag_file}: {e}")
+
+        # Save old tags for merging if merge_tags is enabled
+        old_tags = {}
+        if merge_tags and os_path.isdir(info_folder_path):
+            Cyan(logging.info, f"Merging tags mode enabled for {code}")
+            for tag_file in os.listdir(info_folder_path):
+                if tag_file.endswith('.tag') and tag_file not in user_custom_tags:
+                    old_tag_path = os_path.join(info_folder_path, tag_file)
+                    try:
+                        with open(old_tag_path, 'r', encoding='utf-8') as f:
+                            old_tags[tag_file] = f.read().strip().split('\n')
+                    except Exception as e:
+                        Yellow(logging.warning, f"Failed to read tag {tag_file}: {e}")
+
+        # Create temporary folder for new data
+        if os_path.isdir(temp_info_folder_path):
+            shutil.rmtree(temp_info_folder_path)
+        check_and_make_folder(temp_info_folder_path)
+
+        try:
+            # Save new data to temporary folder
+            await asyncio.gather(
+                self._save_images(temp_info_folder_path),
+                *[
+                    self._save_tag(temp_info_folder_path, key, val)
+                    for key, val in self.file_info.items() if key != 'images'
+                ]
+            )
+
+            # Merge tags if enabled
+            if merge_tags and old_tags:
+                await self._merge_old_tags(temp_info_folder_path, old_tags)
+
+            # Restore user custom tags
+            for tag_file, content in old_user_tags.items():
+                try:
+                    tag_path = os_path.join(temp_info_folder_path, tag_file)
+                    with open(tag_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    Blue(logging.info, f"Restored user tag {tag_file}")
+                except Exception as e:
+                    Yellow(logging.warning, f"Failed to restore tag {tag_file}: {e}")
+
+            # Success: remove old folder and rename temp folder
+            if os_path.isdir(info_folder_path):
+                shutil.rmtree(info_folder_path)
+            os.rename(temp_info_folder_path, info_folder_path)
+            Green(logging.info, f"Successfully updated info for {code}")
+
+        except Exception as e:
+            # Failure: remove temp folder and keep old data
+            if os_path.isdir(temp_info_folder_path):
+                shutil.rmtree(temp_info_folder_path)
+            Red(logging.error, f"Failed to update info for {code}: {e}")
+            raise
+
         if is_move:
             # Move folder
             self.move_to(self.path, self._get_rename(code))
