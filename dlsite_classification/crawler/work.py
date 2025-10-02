@@ -9,32 +9,32 @@ from .common import CommonCrawler
 
 
 class DLsiteWorkCrawler:
-
-    def __init__(self, code='', title=''):
+    def __init__(self, code="", title=""):
         self.code = code
         self.title = title
 
         self.html = None
         self.bs4 = None
-        self.info:dict = dict()
+        self.info: dict = dict()
 
     def _get_dlsite_url(self):
-        url = ''
-        if self.code[0] == 'R':
-            url = f'{RJ_WEBPATH}{self.code}'
-        elif self.code[0] == 'B':
-            url = f'{BJ_WEBPATH}{self.code}'
-        elif self.code[0] == 'V':
-            url = f'{VJ_WEBPATH}{self.code}'
+        url = ""
+        if self.code[0] == "R":
+            url = f"{RJ_WEBPATH}{self.code}"
+        elif self.code[0] == "B":
+            url = f"{BJ_WEBPATH}{self.code}"
+        elif self.code[0] == "V":
+            url = f"{VJ_WEBPATH}{self.code}"
         else:
-            Red(logging.warning,
-                f"==========Crawler DLsite {self.code} Fail.==========")
-            raise ValueError('Not Code!')
+            Red(
+                logging.warning, f"==========Crawler DLsite {self.code} Fail.=========="
+            )
+            raise ValueError("Not Code!")
         return url
 
     def _get_text_url_in_a(self, meta: BeautifulSoup) -> tuple[str, str]:
         try:
-            return [meta.a.text.replace("\n", ""), meta.a.get('href')]
+            return [meta.a.text.replace("\n", ""), meta.a.get("href")]
         except:
             return ["", ""]
 
@@ -45,8 +45,7 @@ class DLsiteWorkCrawler:
         return result
 
     async def get_use_code(self):
-        Cyan(logging.info,
-             f"==========Start Crawler DLsite {self.code} Code==========")
+        Cyan(logging.info, f"==========Start Crawler DLsite {self.code} Code==========")
         url = self._get_dlsite_url()
         Green(logging.info, f"Request DLsite {self.code} code.")
         self.html, self.bs4 = await CommonCrawler.get_request(url)
@@ -54,56 +53,59 @@ class DLsiteWorkCrawler:
         # format
         self.info = await self.format(self.bs4, url)
         if len(self.info) == 0:
-            Red(logging.warning,
-                f"==========Crawler DLsite {self.code} Fail.==========")
-            raise ValueError('Not Data!')
+            Red(
+                logging.warning, f"==========Crawler DLsite {self.code} Fail.=========="
+            )
+            raise ValueError("Not Data!")
 
-        self.code = self.info.get('code', '')
-        self.title = self.info.get('title', '')
-        Blue(logging.info,
-             f"==========End Crawler DLsite {self.code} Code==========")
+        self.code = self.info.get("code", "")
+        self.title = self.info.get("title", "")
+        Blue(logging.info, f"==========End Crawler DLsite {self.code} Code==========")
 
     async def format(self, bs4, url) -> dict:
-        Cyan(logging.info,
-             f"==========Start Format Crawler DLsite {self.code} Code==========")
+        Cyan(
+            logging.info,
+            f"==========Start Format Crawler DLsite {self.code} Code==========",
+        )
         info = dict()
         # Get title and code
-        info['title'] = [bs4.h1.text.replace("\n", ""), url]
-        if info['title'] == '':
+        info["title"] = [bs4.h1.text.replace("\n", ""), url]
+        if info["title"] == "":
             return dict()
-        info['code'] = REGEX_RJ.findall(url)[0].replace("\n", "")
+        info["code"] = REGEX_RJ.findall(url)[0].replace("\n", "")
 
         # Get company
-        metadata = bs4.find(id='work_right_inner')
-        info['company'] = self._get_text_url_in_a(
-            metadata.find('span', 'maker_name')
-        )
+        metadata = bs4.find(id="work_right_inner")
+        info["company"] = self._get_text_url_in_a(metadata.find("span", "maker_name"))
 
-        tag_list = metadata.find('table', id='work_outline').findAll('tr')
+        tag_list = metadata.find("table", id="work_outline").findAll("tr")
 
         # Get all tag
-        info.update({
-            tag_table.th.text:
-                [
+        info.update(
+            {
+                tag_table.th.text: [
                     tag.strip()
                     for tag in tag_table.td.text.split()
-                    if tag.strip() != ''
+                    if tag.strip() != ""
                 ]
-            for tag_table in tag_list
-        })
+                for tag_table in tag_list
+            }
+        )
 
-        info['introduction'] = bs4.find('div', 'work_parts_area').text
+        info["introduction"] = bs4.find("div", "work_parts_area").text
 
         # Get image
-        info['images'] = await CommonCrawler.get_images(
+        info["images"] = await CommonCrawler.get_images(
             [
-                'https:'+i.get('data-src')
-                for i in bs4.find('div', 'product-slider-data').findAll('div')
+                "https:" + i.get("data-src")
+                for i in bs4.find("div", "product-slider-data").findAll("div")
             ]
         )
 
-        Blue(logging.info,
-             f"==========End Format Crawler DLsite {self.code} Code==========")
+        Blue(
+            logging.info,
+            f"==========End Format Crawler DLsite {self.code} Code==========",
+        )
         return info
 
     def get_info(self):

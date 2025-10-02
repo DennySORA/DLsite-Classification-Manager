@@ -1,4 +1,3 @@
-
 import os
 import json
 import logging
@@ -15,19 +14,17 @@ BUF_SIZE = 65536
 
 
 class FileCompare:
-
     def __init__(self, path: str):
         self.root_path: str = path
         self.folder_box: dict[str, dict[str, str]] = dict()
         self.compare_count: int = 0
-        self.folder_file_hash_box: dict[str, list] = {
-            "duplicate": [], "ok": []}
+        self.folder_file_hash_box: dict[str, list] = {"duplicate": [], "ok": []}
         self.need_check_file: list[tuple[list[tuple[str, str]], str]] = []
 
     @staticmethod
     async def hash_file(path) -> str:
         sha1 = hashlib.sha1()
-        async with async_open(path, 'rb') as afp:
+        async with async_open(path, "rb") as afp:
             while True:
                 data = await afp.read(BUF_SIZE)
                 if not data or not isinstance(data, bytes):
@@ -48,16 +45,20 @@ class FileCompare:
             for work, path in val.items():
                 yield f"{company}|{work}", path
 
-    async def hash_work(self, file_list: list[tuple[str, str]]) -> tuple[list[str], dict[str, list[tuple[str, str, int]]]]:
+    async def hash_work(
+        self, file_list: list[tuple[str, str]]
+    ) -> tuple[list[str], dict[str, list[tuple[str, str, int]]]]:
         hash_box: dict[str, list[tuple[str, str, int]]] = dict()
         duplicate: set[str] = set()
         for file_name, file_path in file_list:
-            print(f"Need to Work task {self.compare_count}........",
-                  flush=True, end="\r")
+            print(
+                f"Need to Work task {self.compare_count}........", flush=True, end="\r"
+            )
             hash_id = await self.hash_file(file_path)
             self.compare_count -= 1
-            print(f"Need to Work task {self.compare_count}........",
-                  flush=True, end="\r")
+            print(
+                f"Need to Work task {self.compare_count}........", flush=True, end="\r"
+            )
             size = os.path.getsize(file_path)
             if hash_box.get(hash_id, None) is None:
                 hash_box[hash_id] = [(file_name, file_path, size)]
@@ -74,8 +75,7 @@ class FileCompare:
             self.folder_file_hash_box["ok"].append((name, hash_box))
             return
         Yellow(logging.info, f"{name} Compare Finish has Duplicate File.")
-        self.folder_file_hash_box["duplicate"].append(
-            (name, duplicate, hash_box))
+        self.folder_file_hash_box["duplicate"].append((name, duplicate, hash_box))
 
     def _wrap(self, file_list: list[tuple[str, str]], name: str):
         async def doing():
@@ -83,6 +83,7 @@ class FileCompare:
                 await self.check_duplicate(file_list, name)
             except BaseException as e:
                 Red(logging.error, e)
+
         return doing
 
     async def compare(self):
@@ -91,8 +92,7 @@ class FileCompare:
         for name, path in self._get_work_path():
             file_list = self._get_file_list(path)
             self.compare_count += len(file_list)
-            print(f"Find file total: {self.compare_count}",
-                  end="\r", flush=True)
+            print(f"Find file total: {self.compare_count}", end="\r", flush=True)
             self.need_check_file.append((file_list, name))
 
         await self._task_pool()
@@ -107,13 +107,16 @@ class FileCompare:
             result_duplicate.append(
                 {
                     "name": i[0],
-                    "duplicate_file_size": sum([sum([j[2] for j in i[1:]]) for i in duplicate_file_list])/1024/1024,
+                    "duplicate_file_size": sum(
+                        [sum([j[2] for j in i[1:]]) for i in duplicate_file_list]
+                    )
+                    / 1024
+                    / 1024,
                     "duplicate_hash_id": i[1],
                     "duplicate_file_list": duplicate_file_list,
                 }
             )
-        result_duplicate.sort(
-            key=lambda x: x["duplicate_file_size"], reverse=True)
+        result_duplicate.sort(key=lambda x: x["duplicate_file_size"], reverse=True)
         with open("duplicate.json", "w", encoding="utf-8") as fp:
             json.dump(result_duplicate, fp, ensure_ascii=False)
 
