@@ -17,10 +17,7 @@ def move_subfolder(origin_path, to_path, need_del=False):
     for i in os.listdir(origin_path):
         try:
             new_path = os_path.join(to_path, i)
-            os.rename(
-                os_path.join(origin_path, i),
-                new_path
-            )
+            os.rename(os_path.join(origin_path, i), new_path)
             Green(logging.info, f"Move Sub Folder - Finish {new_path}")
         except BaseException as e:
             Red(logging.error, e)
@@ -43,13 +40,13 @@ def move_folder(root, move_to_folder, origin_folder) -> str:
         return new_path
     except BaseException as e:
         Red(logging.error, e)
-        return ''
+        return ""
 
 
 def merge_folder_name_move(path: str, name: str, need_del: bool = True) -> str:
     logging.info(f"Merge Folder name: {name}\t+\t{path}")
     origin_path = os_path.join(path, name)
-    if path[-1] in ['\\', '/']:
+    if path[-1] in ["\\", "/"]:
         path = path[:-1]
     new_path = path + name
     try:
@@ -60,7 +57,7 @@ def merge_folder_name_move(path: str, name: str, need_del: bool = True) -> str:
         return new_path
     except BaseException as e:
         Red(logging.error, e)
-        return ''
+        return ""
 
 
 def extract_folder_top(path: str):
@@ -73,20 +70,13 @@ def extract_folder_top(path: str):
         folder = white_folder.pop()
         extract_path = os_path.join(path, folder)
         logging.info(f"Extract Path: {extract_path}")
-        has_file, temp = check_folder_has_file(
-            extract_path
-        )
+        has_file, temp = check_folder_has_file(extract_path)
         if has_file or len(temp) == 0:
-            Green(logging.info,
-                  f"Extract hsa file or No Data - Finish {extract_path}")
+            Green(logging.info, f"Extract hsa file or No Data - Finish {extract_path}")
             continue
         Cyan(logging.info, f"Extract Folder: {temp}")
         for i in temp:
-            new_path = merge_folder_name_move(
-                os_path.join(path, folder),
-                i,
-                False
-            )
+            new_path = merge_folder_name_move(os_path.join(path, folder), i, False)
             if len(new_path) == 0:
                 continue
             white_folder.append(new_path)

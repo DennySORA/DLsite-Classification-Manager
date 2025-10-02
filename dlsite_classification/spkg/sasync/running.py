@@ -4,7 +4,6 @@ from async_timeout import timeout
 
 
 class SAsyncRunner:
-
     def __init__(self, loop=None):
         if loop is None:
             self.loop = asyncio.get_event_loop()
@@ -19,12 +18,7 @@ class SAsyncRunner:
         return self.finish
 
     async def run(self, count: int):
-        task = [
-            self.loop.create_task(
-                self.run_pool(i)
-            )
-            for i in range(count)
-        ]
+        task = [self.loop.create_task(self.run_pool(i)) for i in range(count)]
         await asyncio.wait(task)
 
     async def run_pool(self, number: int):

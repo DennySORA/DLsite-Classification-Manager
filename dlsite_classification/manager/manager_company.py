@@ -33,8 +33,8 @@ async def company_update_func(path=None):
     Cyan(logging.info, "==========Start Create Can Crawler Folder ==========")
     # create crawler and injection to file class
     for i in work:
-        code = i.file_info.get('code', '')
-        if code == '':
+        code = i.file_info.get("code", "")
+        if code == "":
             continue
         i.use_crawler(DLsiteWorkCrawler(code=code))
         await read_queue.put(file_doing_manager_wrap(i))
@@ -57,4 +57,5 @@ def file_doing_manager_wrap(folder):
             await folder_class.classify(False)
         except BaseException as e:
             Red(logging.error, e)
+
     return doing
