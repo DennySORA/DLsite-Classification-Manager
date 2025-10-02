@@ -15,7 +15,7 @@ def search_file_code(path):
                 Green(logging.info, f"Search - Success {path}")
                 return result[0]
         Yellow(logging.info, f"Search - Fail {path}")
-        return ''
+        return ""
 
     for _, folder_Names, file_Names in os.walk(path):
         result = for_check(folder_Names)
