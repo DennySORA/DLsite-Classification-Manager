@@ -1,0 +1,118 @@
+name: Security Scans
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feat/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+      - 'feat/**'
+  schedule:
+    - cron: '0 2 * * 1'
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  bandit:
+    name: Bandit Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          python-version: '3.12'
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+
+      - name: Sync dependencies (dev + security)
+        run: uv sync --dev --frozen
+
+      - name: Run Bandit (JSON)
+        run: >-
+          uv run bandit -r dlsite_classification -x tests -f json
+          --severity-level medium --confidence-level medium
+          -o bandit.json
+
+      - name: Run Bandit (SARIF)
+        run: >-
+          uv run bandit -r dlsite_classification -x tests -f sarif
+          --severity-level medium --confidence-level medium
+          -o bandit.sarif
+
+      - name: Run Bandit (TXT)
+        run: >-
+          uv run bandit -r dlsite_classification -x tests -f txt
+          --severity-level medium --confidence-level medium
+          -o bandit.txt
+
+      - name: Upload Bandit artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-reports
+          path: |
+            bandit.json
+            bandit.txt
+            bandit.sarif
+
+      - name: Publish Bandit SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bandit.sarif
+
+  dependency-audit:
+    name: Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          python-version: '3.12'
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+
+      - name: Sync Python dependencies
+        run: uv sync --dev --frozen
+
+      - name: Install pip-audit
+        run: uv pip install pip-audit
+
+      - name: Python dependency audit
+        run: uv run pip-audit --strict
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          check-latest: true
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Node dependencies
+        working-directory: dlsite_classification_web
+        run: yarn install --frozen-lockfile
+
+      - name: Yarn vulnerability audit
+        working-directory: dlsite_classification_web
+        run: yarn audit --level moderate
