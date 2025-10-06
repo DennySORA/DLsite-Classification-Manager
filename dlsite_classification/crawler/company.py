@@ -1,10 +1,11 @@
-import logging
 import asyncio
+import logging
 
 from bs4 import BeautifulSoup
 
 from dlsite_classification.common.regex import REGEX_RG
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red
+
 from .common import CommonCrawler
 
 
@@ -152,5 +153,4 @@ class DLsiteCompanyCrawler:
     def get_info(self):
         if len(self.info) != 0:
             return self.info
-        else:
-            return None
+        return None

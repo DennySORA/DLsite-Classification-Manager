@@ -1,10 +1,9 @@
+import logging
 import os
 import shutil
-import logging
-
 from os import path as os_path
 
-from dlsite_classification.spkg.logs import Green, Cyan, Red
+from dlsite_classification.spkg.logs import Cyan, Green, Red
 
 from .check import check_and_make_folder, check_folder_has_file
 
@@ -80,10 +79,9 @@ def extract_folder_top(path: str):
             if len(new_path) == 0:
                 continue
             white_folder.append(new_path)
-        else:
-            try:
-                os.rmdir(os_path.join(path, folder))
-            except BaseException as e:
-                Red(logging.error, e)
-                return
-            Green(logging.info, f"Extract Folder - Finish {extract_path}")
+        try:
+            os.rmdir(os_path.join(path, folder))
+        except BaseException as e:
+            Red(logging.error, e)
+            return
+        Green(logging.info, f"Extract Folder - Finish {extract_path}")

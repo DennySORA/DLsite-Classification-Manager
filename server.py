@@ -1,16 +1,21 @@
-import uvicorn
-import os
-import asyncio
 import argparse
-import sys
-from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, Query, HTTPException
-from fastapi.responses import FileResponse
+import os
+import re
+from typing import Any
+
+import uvicorn
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from dlsite_classification.common.security import (
+    PathSecurityError,
+    validate_path_within_root,
+)
 from dlsite_classification.extract.extract import ExtractFolder
-import re
+from dlsite_classification.tools.url import build_image_url, decode_url_path
+
 
 app = FastAPI(title="DLsite Collection Manager", version="1.0.0")
 
@@ -210,30 +215,30 @@ class WorkResponse(BaseModel):
     code: str
     title: str
     company: str
-    genre: List[str]
+    genre: list[str]
     image_url: str
-    sample_images: List[str]
+    sample_images: list[str]
     introduction: str
-    sale_date: Optional[str]
-    work_format: List[str]
-    age_rating: List[str]
-    file_size: List[str]
-    my_rating: Optional[str] = None
-    my_collection: Optional[str] = None
-    my_collections: Optional[List[str]] = None
+    sale_date: str | None
+    work_format: list[str]
+    age_rating: list[str]
+    file_size: list[str]
+    my_rating: str | None = None
+    my_collection: str | None = None
+    my_collections: list[str] | None = None
 
 
 class CompanyResponse(BaseModel):
     name: str
     work_count: int
-    works: List[WorkResponse]
+    works: list[WorkResponse]
 
 
 class SearchResponse(BaseModel):
     total: int
-    works: List[WorkResponse]
-    companies: List[str]
-    genres: List[str]
+    works: list[WorkResponse]
+    companies: list[str]
+    genres: list[str]
 
 
 # Helper function to convert work data
@@ -310,15 +315,15 @@ def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
         if work.info.images:
             for img in work.info.images:
                 if "img_main" in img:
-                    main_image = f"/image?path={os.path.join(work.info.path, img)}"
+                    main_image = build_image_url(os.path.join(work.info.path, img))
                 elif "img_smp" in img:
                     sample_images.append(
-                        f"/image?path={os.path.join(work.info.path, img)}"
+                        build_image_url(os.path.join(work.info.path, img))
                     )
 
             if not main_image and work.info.images:
-                main_image = (
-                    f"/image?path={os.path.join(work.info.path, work.info.images[0])}"
+                main_image = build_image_url(
+                    os.path.join(work.info.path, work.info.images[0])
                 )
 
         return WorkResponse(
@@ -371,14 +376,14 @@ async def status():
 
 @app.get("/works", response_model=SearchResponse)
 async def get_works(
-    search: Optional[str] = Query(None, description="Search in title, company, genre"),
-    company: Optional[str] = Query(None, description="Filter by company"),
-    collection: Optional[str] = Query(None, description="Filter by collection"),
-    rating: Optional[str] = Query(None, description="Filter by rating"),
-    tags: Optional[str] = Query(None, description="Filter by tags (comma-separated)"),
+    search: str | None = Query(None, description="Search in title, company, genre"),
+    company: str | None = Query(None, description="Filter by company"),
+    collection: str | None = Query(None, description="Filter by collection"),
+    rating: str | None = Query(None, description="Filter by rating"),
+    tags: str | None = Query(None, description="Filter by tags (comma-separated)"),
     tag_mode: str = Query("OR", description="Tag filter mode: OR or AND"),
-    work_format: Optional[str] = Query(None, description="Filter by work format"),
-    file_format: Optional[str] = Query(None, description="Filter by file format"),
+    work_format: str | None = Query(None, description="Filter by work format"),
+    file_format: str | None = Query(None, description="Filter by file format"),
     sort: str = Query(
         "title", description="Sort by: title, sale_date, company, rating, collection"
     ),
@@ -528,7 +533,7 @@ async def get_works(
     )
 
 
-@app.get("/companies", response_model=List[CompanyResponse])
+@app.get("/companies", response_model=list[CompanyResponse])
 async def get_companies():
     if not extract_data.classification_table:
         await extract_data.scan_file()
@@ -664,9 +669,9 @@ async def get_all_file_formats():
 
 
 class UserDataRequest(BaseModel):
-    rating: Optional[str] = None
-    collection: Optional[str] = None
-    collections: Optional[List[str]] = None
+    rating: str | None = None
+    collection: str | None = None
+    collections: list[str] | None = None
 
 
 @app.post("/work/{code}/user-data")
@@ -775,9 +780,35 @@ async def get_collections():
 
 @app.get("/image")
 async def get_image(path: str):
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Image not found")
-    return FileResponse(path)
+    """Serve image files with URL decoding and security validation.
+
+    Decodes URL-encoded paths and validates that the requested file
+    is within the allowed data directory to prevent directory traversal attacks.
+
+    Args:
+        path: URL-encoded absolute path to the image file
+
+    Returns:
+        FileResponse with the requested image
+
+    Raises:
+        HTTPException 403: If path is outside allowed directory
+        HTTPException 404: If image file not found
+    """
+    # Decode URL-encoded path
+    decoded_path = decode_url_path(path)
+
+    # Security validation using common security module
+    try:
+        validated_path = validate_path_within_root(
+            decoded_path, DATA_PATH, check_exists=True
+        )
+    except PathSecurityError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return FileResponse(validated_path)
 
 
 @app.get("/scan")
@@ -800,13 +831,13 @@ if __name__ == "__main__":
     # 檢查數據路徑是否存在
     if not os.path.exists(DATA_PATH):
         print(f"⚠️  Warning: Data path '{DATA_PATH}' does not exist!")
-        print(f"📁 You can specify a custom path using:")
-        print(f"   python server.py --data-path /path/to/your/data")
+        print("📁 You can specify a custom path using:")
+        print("   python server.py --data-path /path/to/your/data")
         print(
-            f"   or set environment variable: export DLSITE_DATA_PATH=/path/to/your/data"
+            "   or set environment variable: export DLSITE_DATA_PATH=/path/to/your/data"
         )
         print(
-            f"🚀 Server will start anyway, but scanning will fail until the path exists."
+            "🚀 Server will start anyway, but scanning will fail until the path exists."
         )
         print()
 

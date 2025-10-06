@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 
 from dlsite_classification.common.regex import REGEX_RJ
 from dlsite_classification.spkg.logs import Green, Yellow
@@ -24,3 +24,4 @@ def search_file_code(path):
         result = for_check(file_Names)
         if len(result) != 0:
             return result
+    return ""

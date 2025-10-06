@@ -1,5 +1,6 @@
 import asyncio
 import logging
+
 from async_timeout import timeout
 
 
@@ -28,13 +29,13 @@ class SAsyncRunner:
                 try:
                     async with timeout(3):
                         component = await self.read.get()
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logging.info(f"{number} Pool Close.")
-                    return None
+                    return
                 await component()
                 await self.finish.put(component)
                 logging.info(f"{number} Pool Finish.")
             except asyncio.CancelledError:
-                return None
+                return
             except BaseException as e:
                 logging.error(e, exc_info=True)

@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
+import logging
 import os
 import sys
 import time
-import logging
 
 
 def InitializeLog(path: str):

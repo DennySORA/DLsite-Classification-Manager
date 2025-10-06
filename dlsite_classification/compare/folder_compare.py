@@ -1,7 +1,7 @@
-import os
 import logging
+import os
 
-from dlsite_classification.spkg.logs import Red, Green
+from dlsite_classification.spkg.logs import Green, Red
 from dlsite_classification.tools.scan import get_folder_cla_struct
 
 

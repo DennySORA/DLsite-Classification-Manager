@@ -19,6 +19,7 @@ dependencies = [
     "idna>=3.10",
     "lxml>=6.0.2",
     "multidict>=6.6.4",
+    "mypy>=1.18.2",
     "pycodestyle>=2.14.0",
     "pydantic>=2.11.9",
     "requests>=2.32.5",
@@ -30,4 +31,154 @@ dependencies = [
     "uvicorn>=0.37.0",
     "wincertstore>=0.2.1",
     "yarl>=1.20.1",
+]
+# ---------------- Ruff ----------------
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+exclude = ["tests"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-single-line = false
+lines-after-imports = 2
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+
+[tool.ruff.lint]
+# Enable comprehensive linting rules for high code quality
+select = [
+    "E", # pycodestyle errors – PEP 8 outright violations (indentation, whitespace, etc.)
+    "W", # pycodestyle warnings – stylistic issues like excessive line length
+    "F", # Pyflakes – logical errors (unused imports, undefined names, etc.)
+    "UP", # pyupgrade – suggest modern Python syntax (f-strings, pathlib, etc.)
+    "B", # flake8-bugbear – common bugs and design problems
+    "SIM", # flake8-simplify – propose simpler, more readable constructs
+    "I", # isort – import grouping and ordering
+    "N", # pep8-naming – enforce naming conventions
+    "C90", # mccabe – cyclomatic complexity checks
+    "ARG", # flake8-unused-arguments – detect unused or redundant arguments
+    "S", # flake8-bandit – security-oriented code issues
+    "T20", # flake8-print – forbid stray print/debug statements
+    "RET", # flake8-return – ensure explicit and consistent return patterns
+    "ICN", # flake8-import-conventions – enforce import aliasing rules (e.g., `import numpy as np`)
+    "PIE", # flake8-pie – miscellaneous correctness & readability improvements
+    "PL", # Pylint subset – broader code-quality checks (convention, error, refactor, warning)
+    "TRY", # tryceratops – encourage explicit, focused exception handling
+    "FLY", # flynt – suggest converting old string formatting to f-strings
+    "PERF", # perflint – flag patterns with measurable performance overhead
+    "ANN" # flake8-annotations – enforce type annotations for function signatures
+]
+
+ignore = [
+    "E501",   # line-too-long
+
+    "COM819", # prohibited-trailing-comma
+
+    "TRY003", # raise-vanilla-args (avoid specifying long messages outside the exception class)
+
+    "PERF203", # try-except-in-loop (try-except within a loop incurs performance overhead)
+
+    "ANN204", # missing-return-type-special-method
+    "ANN401", # any-type (dynamically typed expressions (typing.Any) are disallowed)
+]
+
+# Configure pydocstyle to use Google docstring convention
+[tool.ruff.lint.pydocstyle]
+convention = "google" # Use Google-style docstrings (Args:, Returns:, Raises:)
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+# ---------------- mypy ----------------
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = ["pydantic.mypy"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_any_generics = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+exclude = ["tests"]
+
+# ---------------- pytest ----------------
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--disable-warnings",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::RuntimeWarning",
+    "ignore::UserWarning",
+]
+
+# ---------------- coverage ----------------
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+parallel = false
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 0
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+# ---------------- bandit ----------------
+
+[tool.bandit]
+targets = ["*"]
+exclude_dirs = ["tests", ".venv", "venv", "env", ".env"]
+skips = ["B101", "B601"]
+[tool.bandit.assert_used]
+skips = ["**/test_*.py", "**/tests/**"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.13.2",
 ]

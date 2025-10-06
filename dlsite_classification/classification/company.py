@@ -1,5 +1,3 @@
-
-
 class CompanyFolder:
     def __init__(self, path: str):
         self.crawler = None

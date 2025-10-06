@@ -1,16 +1,15 @@
-import os
 import logging
-
+import os
 from os import path as os_path
 
-from dlsite_classification.tools import (
-    move_subfolder,
-    move_folder,
-    search_file_code,
-    extract_folder_top,
-)
 from dlsite_classification.common.regex import REGEX_COMPANY_FOLDER
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Yellow
+from dlsite_classification.tools import (
+    extract_folder_top,
+    move_folder,
+    move_subfolder,
+    search_file_code,
+)
 
 from .folder import Folder
 
@@ -49,7 +48,7 @@ def classification_folder(root_path: str) -> list:
     for i in root_folder:
         if i in ["finish", "not_classification", "look_like_finish", "null", "wait"]:
             continue
-        elif REGEX_COMPANY_FOLDER.match(i):
+        if REGEX_COMPANY_FOLDER.match(i):
             move_folder(root_path, "look_like_finish", i)
         else:
             create_folder_obj([move_folder(root_path, "wait", i)])

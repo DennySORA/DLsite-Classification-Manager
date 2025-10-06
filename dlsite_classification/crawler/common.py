@@ -1,12 +1,11 @@
-import logging
 import asyncio
+import logging
+
 import aiohttp
-
 from bs4 import BeautifulSoup
-from typing import Union
 
-from dlsite_classification.spkg.logs import Green
 from dlsite_classification.common.net import HEADERS
+from dlsite_classification.spkg.logs import Green
 
 
 class CommonCrawler:
@@ -20,12 +19,15 @@ class CommonCrawler:
     @classmethod
     async def get_images(cls, urls) -> tuple[dict]:
         async with aiohttp.ClientSession(headers=HEADERS) as session:
-            return await asyncio.gather(*[cls.get_image(session, url) for url in urls])
+            results = await asyncio.gather(
+                *[cls.get_image(session, url) for url in urls]
+            )
+            return tuple(results)
 
     @classmethod
     async def get_request(
         cls, url: str, is_json=False
-    ) -> Union[tuple[str, BeautifulSoup], dict]:
+    ) -> tuple[str, BeautifulSoup] | dict:
         """Return tuple html and bs4."""
 
         async with aiohttp.ClientSession(headers=HEADERS) as session:

@@ -1,21 +1,19 @@
-import os
-import time
-import shutil
-import logging
 import asyncio
-
-from typing import Optional
+import logging
+import os
+import shutil
+import time
 from os import path as os_path
 
+from dlsite_classification.common.regex import REGEX_RG, REGEX_RJ
+from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red, Yellow
 from dlsite_classification.tools import (
     check_and_make_folder,
-    save_data,
-    replace_file_name,
     check_folder_has_file,
     merge_folder_name_move,
+    replace_file_name,
+    save_data,
 )
-from dlsite_classification.common.regex import REGEX_RJ, REGEX_RG
-from dlsite_classification.spkg.logs import Blue, Cyan, Yellow, Red, Green
 
 
 class Folder:
@@ -49,7 +47,7 @@ class Folder:
         file_path = os_path.join(info_folder_path, file_name)
         await save_data(file_path, "\n".join(data))
 
-    async def _save_images(self, path: str, images: Optional[list] = None):
+    async def _save_images(self, path: str, images: list | None = None):
         if images is None:
             images = self.file_info.get("images", None)
         if images is None:
@@ -76,7 +74,7 @@ class Folder:
             if os_path.isfile(new_tag_path):
                 try:
                     # Read new values
-                    with open(new_tag_path, "r", encoding="utf-8") as f:
+                    with open(new_tag_path, encoding="utf-8") as f:
                         new_values = f.read().strip().split("\n")
 
                     # Merge: preserve order, add old values that are not in new values
@@ -104,13 +102,12 @@ class Folder:
                 os_path.split(self.root_path)[0],
                 replace_file_name(f"[{company_name}]_[{company_code_name}]"),
             )
-        else:
-            return os_path.join(
-                self.root_path,
-                replace_file_name(
-                    f"[{code}]_[{company_name}]_[{company_code_name}] {title}"
-                ),
-            )
+        return os_path.join(
+            self.root_path,
+            replace_file_name(
+                f"[{code}]_[{company_name}]_[{company_code_name}] {title}"
+            ),
+        )
 
     # ---------------------------------------
     # ---------------------------------------
@@ -171,14 +168,14 @@ class Folder:
                 f"==========End Check Folder Recursive because Has Data in {self.path}==========",
             )
             return
-        elif data_count == 0:
+        if data_count == 0:
             self.move_to("null")
             Cyan(
                 logging.info,
                 f"==========End Check Folder Recursive because Null in {self.path}==========",
             )
             return
-        elif data_count == 1:
+        if data_count == 1:
             new_path = merge_folder_name_move(self.path, data[0])
             if len(new_path) == 0:
                 return
@@ -193,10 +190,9 @@ class Folder:
                 self.move_to("code", code[0])
             self.file_info["code"] = str(code[0])
             return "code"
-        else:
-            if is_move:
-                self.move_to("other")
-            return "other"
+        if is_move:
+            self.move_to("other")
+        return "other"
 
     async def set_request_failed(self):
         if self.crawler is None:
@@ -232,7 +228,7 @@ class Folder:
                 old_tag_path = os_path.join(info_folder_path, tag_file)
                 if os_path.isfile(old_tag_path):
                     try:
-                        with open(old_tag_path, "r", encoding="utf-8") as f:
+                        with open(old_tag_path, encoding="utf-8") as f:
                             old_user_tags[tag_file] = f.read()
                     except Exception as e:
                         Yellow(
@@ -247,7 +243,7 @@ class Folder:
                 if tag_file.endswith(".tag") and tag_file not in user_custom_tags:
                     old_tag_path = os_path.join(info_folder_path, tag_file)
                     try:
-                        with open(old_tag_path, "r", encoding="utf-8") as f:
+                        with open(old_tag_path, encoding="utf-8") as f:
                             old_tags[tag_file] = f.read().strip().split("\n")
                     except Exception as e:
                         Yellow(logging.warning, f"Failed to read tag {tag_file}: {e}")

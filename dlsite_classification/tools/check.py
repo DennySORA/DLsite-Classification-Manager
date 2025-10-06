@@ -1,8 +1,8 @@
-import os
 import logging
-
+import os
 from os import path as os_path
-from dlsite_classification.spkg.logs import Green, Cyan, Red, Yellow
+
+from dlsite_classification.spkg.logs import Cyan, Green, Red, Yellow
 
 
 def check_and_make_folder(path):

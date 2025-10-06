@@ -1,11 +1,8 @@
 import logging
 import os
-import re
 import shutil
-from collections import defaultdict
 
 from dlsite_classification.common.regex import REGEX_COMPANY_FOLDER, REGEX_RJ
-from dlsite_classification.extract.extract import ExtractFolder
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red, Yellow
 
 
@@ -31,11 +28,11 @@ async def validate_structure_func(path=None, move_to=None):
 
     # 儲存問題資料夾
     issues = {
-        "invalid_work_format": [],   # 作品資料夾格式錯誤
-        "missing_info": [],           # 缺少 info 資料夾的作品
-        "missing_code": [],           # 資料夾名稱中沒有代碼的作品
-        "invalid_company_format": [], # 公司資料夾格式錯誤
-        "code_only_folder": [],       # 只有代碼的資料夾（缺少標題）
+        "invalid_work_format": [],  # 作品資料夾格式錯誤
+        "missing_info": [],  # 缺少 info 資料夾的作品
+        "missing_code": [],  # 資料夾名稱中沒有代碼的作品
+        "invalid_company_format": [],  # 公司資料夾格式錯誤
+        "code_only_folder": [],  # 只有代碼的資料夾（缺少標題）
     }
 
     total_companies = 0
@@ -45,8 +42,7 @@ async def validate_structure_func(path=None, move_to=None):
     # 直接掃描檔案系統，不依賴 ExtractFolder 的過濾
     try:
         company_folders = [
-            d for d in os.listdir(path)
-            if os.path.isdir(os.path.join(path, d))
+            d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))
         ]
     except Exception as e:
         Red(logging.error, f"Failed to list directory: {e}")
@@ -68,11 +64,13 @@ async def validate_structure_func(path=None, move_to=None):
         elif not is_company_folder and not has_work_code:
             # 不符合公司格式，也沒有作品代碼 - 這是有問題的資料夾
             total_companies += 1
-            issues["invalid_company_format"].append({
-                "path": company_folder_path,
-                "name": company_folder_name,
-                "reason": "格式不符合 [CompanyName]_[CompanyID]"
-            })
+            issues["invalid_company_format"].append(
+                {
+                    "path": company_folder_path,
+                    "name": company_folder_name,
+                    "reason": "格式不符合 [CompanyName]_[CompanyID]",
+                }
+            )
         else:
             # 包含作品代碼的，可能是誤放在頂層的作品資料夾
             # 也算一個公司資料夾（即使格式不對）
@@ -81,7 +79,8 @@ async def validate_structure_func(path=None, move_to=None):
         # 檢查公司資料夾內的所有子資料夾
         try:
             work_folders = [
-                d for d in os.listdir(company_folder_path)
+                d
+                for d in os.listdir(company_folder_path)
                 if os.path.isdir(os.path.join(company_folder_path, d))
             ]
         except Exception as e:
@@ -97,11 +96,13 @@ async def validate_structure_func(path=None, move_to=None):
 
             if not code_match:
                 # 沒有找到作品代碼
-                issues["missing_code"].append({
-                    "company": company_folder_name,
-                    "path": work_folder_path,
-                    "name": work_folder_name,
-                })
+                issues["missing_code"].append(
+                    {
+                        "company": company_folder_name,
+                        "path": work_folder_path,
+                        "name": work_folder_name,
+                    }
+                )
                 continue
 
             code = code_match.group()
@@ -110,13 +111,15 @@ async def validate_structure_func(path=None, move_to=None):
             # 檢查作品資料夾格式：應該是 [CODE]_[CompanyName]_[CompanyID] Title
             # 最簡格式應該至少包含 CODE_
             if not _is_valid_work_folder_format(work_folder_name, code):
-                issues["code_only_folder"].append({
-                    "company": company_folder_name,
-                    "code": code,
-                    "path": work_folder_path,
-                    "name": work_folder_name,
-                    "reason": "只有代碼，缺少公司資訊和標題"
-                })
+                issues["code_only_folder"].append(
+                    {
+                        "company": company_folder_name,
+                        "code": code,
+                        "path": work_folder_path,
+                        "name": work_folder_name,
+                        "reason": "只有代碼，缺少公司資訊和標題",
+                    }
+                )
                 # 繼續檢查 info 資料夾
 
             # 檢查是否有 info 資料夾
@@ -124,13 +127,15 @@ async def validate_structure_func(path=None, move_to=None):
             info_folder_path = os.path.join(work_folder_path, expected_info_folder)
 
             if not os.path.isdir(info_folder_path):
-                issues["missing_info"].append({
-                    "company": company_folder_name,
-                    "code": code,
-                    "path": work_folder_path,
-                    "name": work_folder_name,
-                    "expected_info": expected_info_folder,
-                })
+                issues["missing_info"].append(
+                    {
+                        "company": company_folder_name,
+                        "code": code,
+                        "path": work_folder_path,
+                        "name": work_folder_name,
+                        "expected_info": expected_info_folder,
+                    }
+                )
 
     # 輸出統計資訊
     Blue(logging.info, "========== Validation Summary ==========")
@@ -178,7 +183,7 @@ async def _move_problematic_folders(issues, source_root, target_root):
                     folders_to_move[path] = {
                         "path": path,
                         "name": item.get("name", ""),
-                        "type": issue_type
+                        "type": issue_type,
                     }
 
     folders_list = list(folders_to_move.values())
@@ -192,7 +197,10 @@ async def _move_problematic_folders(issues, source_root, target_root):
     Cyan(logging.info, f"Target root: {target_root}")
 
     # 詢問確認
-    Yellow(logging.warning, "\nThis will move all problematic folders to the target directory.")
+    Yellow(
+        logging.warning,
+        "\nThis will move all problematic folders to the target directory.",
+    )
     Yellow(logging.warning, "The directory structure will be preserved.")
 
     confirm = input("\nDo you want to proceed? (yes/no): ").strip().lower()
@@ -225,7 +233,9 @@ async def _move_problematic_folders(issues, source_root, target_root):
 
             # 檢查目標是否已存在
             if os.path.exists(target_path):
-                Yellow(logging.warning, f"Target already exists, skipping: {target_path}")
+                Yellow(
+                    logging.warning, f"Target already exists, skipping: {target_path}"
+                )
                 failed_count += 1
                 continue
 
@@ -285,41 +295,56 @@ def _print_issues_table(issues):
     """
     # 1. 公司資料夾格式錯誤
     if issues["invalid_company_format"]:
-        Red(logging.error, f"\n{'='*80}", stack_info=False)
-        Red(logging.error, f"[1] 公司資料夾格式錯誤 ({len(issues['invalid_company_format'])} 個)", stack_info=False)
-        Red(logging.error, f"{'='*80}", stack_info=False)
+        Red(logging.error, f"\n{'=' * 80}", stack_info=False)
+        Red(
+            logging.error,
+            f"[1] 公司資料夾格式錯誤 ({len(issues['invalid_company_format'])} 個)",
+            stack_info=False,
+        )
+        Red(logging.error, f"{'=' * 80}", stack_info=False)
         Red(logging.error, f"{'資料夾名稱':<50} | {'問題':<25}", stack_info=False)
-        Red(logging.error, f"{'-'*80}", stack_info=False)
+        Red(logging.error, f"{'-' * 80}", stack_info=False)
 
         for item in issues["invalid_company_format"]:
             name = _truncate_string(item["name"], 48)
             reason = _truncate_string(item["reason"], 23)
             Red(logging.error, f"{name:<50} | {reason:<25}", stack_info=False)
             Red(logging.error, f"路徑: {item['path']}", stack_info=False)
-            Red(logging.error, f"{'-'*80}", stack_info=False)
+            Red(logging.error, f"{'-' * 80}", stack_info=False)
 
     # 2. 缺少作品代碼的資料夾
     if issues["missing_code"]:
-        Red(logging.error, f"\n{'='*80}", stack_info=False)
-        Red(logging.error, f"[2] 資料夾名稱中缺少作品代碼 ({len(issues['missing_code'])} 個)", stack_info=False)
-        Red(logging.error, f"{'='*80}", stack_info=False)
-        Red(logging.error, f"{'公司資料夾':<35} | {'作品資料夾名稱':<40}", stack_info=False)
-        Red(logging.error, f"{'-'*80}", stack_info=False)
+        Red(logging.error, f"\n{'=' * 80}", stack_info=False)
+        Red(
+            logging.error,
+            f"[2] 資料夾名稱中缺少作品代碼 ({len(issues['missing_code'])} 個)",
+            stack_info=False,
+        )
+        Red(logging.error, f"{'=' * 80}", stack_info=False)
+        Red(
+            logging.error,
+            f"{'公司資料夾':<35} | {'作品資料夾名稱':<40}",
+            stack_info=False,
+        )
+        Red(logging.error, f"{'-' * 80}", stack_info=False)
 
         for item in issues["missing_code"]:
             company = _truncate_string(item["company"], 33)
             name = _truncate_string(item["name"], 38)
             Red(logging.error, f"{company:<35} | {name:<40}", stack_info=False)
             Red(logging.error, f"路徑: {item['path']}", stack_info=False)
-            Red(logging.error, f"{'-'*80}", stack_info=False)
+            Red(logging.error, f"{'-' * 80}", stack_info=False)
 
     # 3. 只有代碼的資料夾（格式不完整）
     if issues["code_only_folder"]:
-        Yellow(logging.warning, f"\n{'='*80}")
-        Yellow(logging.warning, f"[3] 作品資料夾格式不完整 ({len(issues['code_only_folder'])} 個)")
-        Yellow(logging.warning, f"{'='*80}")
+        Yellow(logging.warning, f"\n{'=' * 80}")
+        Yellow(
+            logging.warning,
+            f"[3] 作品資料夾格式不完整 ({len(issues['code_only_folder'])} 個)",
+        )
+        Yellow(logging.warning, f"{'=' * 80}")
         Yellow(logging.warning, f"{'代碼':<12} | {'公司':<30} | {'資料夾名稱':<30}")
-        Yellow(logging.warning, f"{'-'*80}")
+        Yellow(logging.warning, f"{'-' * 80}")
 
         for item in issues["code_only_folder"]:
             code = item["code"]
@@ -328,15 +353,17 @@ def _print_issues_table(issues):
             Yellow(logging.warning, f"{code:<12} | {company:<30} | {name:<30}")
             Yellow(logging.warning, f"路徑: {item['path']}")
             Yellow(logging.warning, f"原因: {item['reason']}")
-            Yellow(logging.warning, f"{'-'*80}")
+            Yellow(logging.warning, f"{'-' * 80}")
 
     # 4. 缺少 info 資料夾
     if issues["missing_info"]:
-        Yellow(logging.warning, f"\n{'='*80}")
-        Yellow(logging.warning, f"[4] 缺少 info 資料夾 ({len(issues['missing_info'])} 個)")
-        Yellow(logging.warning, f"{'='*80}")
+        Yellow(logging.warning, f"\n{'=' * 80}")
+        Yellow(
+            logging.warning, f"[4] 缺少 info 資料夾 ({len(issues['missing_info'])} 個)"
+        )
+        Yellow(logging.warning, f"{'=' * 80}")
         Yellow(logging.warning, f"{'代碼':<12} | {'公司':<25} | {'作品資料夾':<35}")
-        Yellow(logging.warning, f"{'-'*80}")
+        Yellow(logging.warning, f"{'-' * 80}")
 
         for item in issues["missing_info"]:
             code = item["code"]
@@ -345,7 +372,7 @@ def _print_issues_table(issues):
             Yellow(logging.warning, f"{code:<12} | {company:<25} | {name:<35}")
             Yellow(logging.warning, f"路徑: {item['path']}")
             Yellow(logging.warning, f"預期 info 資料夾: {item['expected_info']}")
-            Yellow(logging.warning, f"{'-'*80}")
+            Yellow(logging.warning, f"{'-' * 80}")
 
 
 def _truncate_string(s, max_len):
@@ -360,4 +387,4 @@ def _truncate_string(s, max_len):
     """
     if len(s) <= max_len:
         return s
-    return s[:max_len-2] + ".."
+    return s[: max_len - 2] + ".."
