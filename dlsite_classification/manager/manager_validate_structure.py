@@ -281,10 +281,7 @@ def _is_valid_work_folder_format(folder_name, code):
     # 檢查是否有下劃線和公司資訊
     # 標準格式：[CODE]_[Company]_[CompanyID] Title
     # 最簡格式：CODE_至少有其他內容
-    if f"{code}_" not in folder_name and f"[{code}]_" not in folder_name:
-        return False
-
-    return True
+    return f"{code}_" in folder_name or f"[{code}]_" in folder_name
 
 
 def _print_issues_table(issues):

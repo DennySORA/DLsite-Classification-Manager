@@ -8,10 +8,11 @@ This module tests the dlsite_classification.tools.url module with:
 """
 
 import pytest
+
 from dlsite_classification.tools.url import (
-    encode_path_for_url,
-    decode_url_path,
     build_image_url,
+    decode_url_path,
+    encode_path_for_url,
 )
 
 

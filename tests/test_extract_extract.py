@@ -1,13 +1,11 @@
 """Test suite for extract.extract module - File scanning and metadata extraction."""
 import os
-import pytest
-import tempfile
-import shutil
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+
+import pytest
 
 from dlsite_classification.extract.extract import ExtractFolder
-from dlsite_classification.extract.structure import Tag, WorkInfo, Work, Company
+from dlsite_classification.extract.structure import Company, Tag, Work, WorkInfo
 
 
 # ============================================================================

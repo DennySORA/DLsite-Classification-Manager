@@ -3,7 +3,7 @@ from dlsite_classification.spkg.logs import InitializeLog
 from dlsite_classification.spkg.sasync import SAsync
 
 
-async def main():
+async def main() -> None:
     await user_control()
 
 

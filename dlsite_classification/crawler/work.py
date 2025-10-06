@@ -41,17 +41,17 @@ class DLsiteWorkCrawler:
         self.code = code
         return f"{base}{code}"
 
-    def _get_text_url_in_a(self, meta: BeautifulSoup) -> tuple[str, str]:
+    def _get_text_url_in_a(self, meta: BeautifulSoup | None) -> tuple[str, str]:
         if meta is None:
-            return ["", ""]
+            return "", ""
 
         anchor = meta.find("a")
         if anchor is None:
-            return ["", ""]
+            return "", ""
 
         text = anchor.text.replace("\n", "")
         href = anchor.get("href") or ""
-        return [text, href]
+        return text, href
 
     def _tag_convert_dict(self, tables: list) -> dict:
         result = dict()
@@ -114,9 +114,7 @@ class DLsiteWorkCrawler:
 
         outline_table = metadata.find("table", id="work_outline")
         if outline_table is None:
-            raise ValueError(
-                "DLsite page format changed: missing table#work_outline"
-            )
+            raise ValueError("DLsite page format changed: missing table#work_outline")
 
         tag_list = outline_table.find_all("tr")
 
@@ -134,9 +132,7 @@ class DLsiteWorkCrawler:
 
         intro = bs4.find("div", "work_parts_area")
         if intro is None:
-            raise ValueError(
-                "DLsite page format changed: missing div.work_parts_area"
-            )
+            raise ValueError("DLsite page format changed: missing div.work_parts_area")
         info["introduction"] = intro.text
 
         # Get image

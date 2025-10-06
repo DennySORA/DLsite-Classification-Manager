@@ -1,29 +1,29 @@
 """Integration tests hitting DLsite with real requests."""
 import asyncio
 import re
-from typing import Dict
 
 import aiohttp
 import pytest
 import pytest_asyncio
 
-from dlsite_classification.crawler.work import DLsiteWorkCrawler
 from dlsite_classification.common.dlsite import BJ_WEBPATH, RJ_WEBPATH, VJ_WEBPATH
 from dlsite_classification.common.net import HEADERS
+from dlsite_classification.crawler.work import DLsiteWorkCrawler
 
-NEW_RELEASE_PAGES: Dict[str, str] = {
+
+NEW_RELEASE_PAGES: dict[str, str] = {
     "rj": "maniax",
     "bj": "books",
     "vj": "pro",
 }
-CODE_PATTERNS: Dict[str, re.Pattern[str]] = {
+CODE_PATTERNS: dict[str, re.Pattern[str]] = {
     "rj": re.compile(r"RJ\d{6,8}"),
     "bj": re.compile(r"BJ\d{6,8}"),
     "vj": re.compile(r"VJ\d{6,8}"),
 }
 
-_CODE_CACHE: Dict[str, str] = {}
-_CRAWLER_CACHE: Dict[str, DLsiteWorkCrawler] = {}
+_CODE_CACHE: dict[str, str] = {}
+_CRAWLER_CACHE: dict[str, DLsiteWorkCrawler] = {}
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +46,7 @@ async def _fetch_latest_code(kind: str) -> str:
 
 
 @pytest_asyncio.fixture
-async def latest_dlsite_codes() -> Dict[str, str]:
+async def latest_dlsite_codes() -> dict[str, str]:
     if not _CODE_CACHE:
         tasks = {kind: asyncio.create_task(_fetch_latest_code(kind)) for kind in NEW_RELEASE_PAGES}
         for kind, task in tasks.items():

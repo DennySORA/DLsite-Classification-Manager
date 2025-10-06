@@ -4,16 +4,14 @@ import sys
 import time
 
 
-def InitializeLog(path: str):
+def InitializeLog(path: str) -> None:
     if not os.path.isdir(path):
         os.mkdir(path)
-    logFile = open(
-        f"{path}/{time.strftime('%Y-%m-%d', time.localtime())}_log.log",
-        "a",
-        encoding="utf-8",
+    log_file_path = os.path.join(
+        path, f"{time.strftime('%Y-%m-%d', time.localtime())}_log.log"
     )
 
-    file_handler = logging.StreamHandler(logFile)
+    file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
     stdout_handler = logging.StreamHandler(sys.stdout)
 
     logging.basicConfig(

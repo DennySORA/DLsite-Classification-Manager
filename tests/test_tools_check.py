@@ -5,10 +5,12 @@ Testing folder creation and file checking utilities.
 """
 
 import os
+
 import pytest
+
 from dlsite_classification.tools.check import (
     check_and_make_folder,
-    check_folder_has_file
+    check_folder_has_file,
 )
 
 

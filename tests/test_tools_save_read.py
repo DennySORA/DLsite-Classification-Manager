@@ -5,8 +5,10 @@ Testing async file I/O operations.
 """
 
 import os
+
 import pytest
-from dlsite_classification.tools.save_read import save_data, raed_data
+
+from dlsite_classification.tools.save_read import raed_data, save_data
 
 
 @pytest.mark.unit
@@ -22,7 +24,7 @@ class TestSaveData:
         await save_data(file_path, test_data)
 
         assert os.path.exists(file_path)
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
         assert content == test_data
 
@@ -34,7 +36,7 @@ class TestSaveData:
         await save_data(file_path, test_data)
 
         assert os.path.exists(file_path)
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
         assert content == test_data
 
@@ -46,7 +48,7 @@ class TestSaveData:
         await save_data(file_path, test_data)
 
         assert os.path.exists(file_path)
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
         assert content == test_data
 
@@ -57,7 +59,7 @@ class TestSaveData:
 
         await save_data(file_path, test_data)
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
         assert content == test_data
 
@@ -72,7 +74,7 @@ class TestSaveData:
         new_data = "new content"
         await save_data(file_path, new_data)
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
         assert content == new_data
 

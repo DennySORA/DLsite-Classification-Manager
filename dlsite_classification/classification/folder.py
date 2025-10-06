@@ -3,7 +3,9 @@ import logging
 import os
 import shutil
 import time
+from collections.abc import Iterable
 from os import path as os_path
+from typing import Any
 
 from dlsite_classification.common.regex import REGEX_RG, REGEX_RJ
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red, Yellow
@@ -17,13 +19,13 @@ from dlsite_classification.tools import (
 
 
 class Folder:
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self._get_path(path)
 
-        self.file_info = dict()
-        self.crawler = None
+        self.file_info: dict[str, Any] = {}
+        self.crawler: Any | None = None
 
-    def _get_path(self, path: str):
+    def _get_path(self, path: str) -> None:
         Cyan(logging.info, f"Update Folder Path {path}")
 
         self.path = path
@@ -32,24 +34,34 @@ class Folder:
         self.root_path = str(path_temp[0])
         self.folder_name = str(path_temp[1])
 
-    async def _save_tag(self, info_folder_path, name: str, data=[]):
-        # Check
-        if isinstance(data, tuple):
-            data = list(data)
-        elif not isinstance(data, list):
-            data = [data]
-        elif len(data) == 0:
+    async def _save_tag(
+        self,
+        info_folder_path: str,
+        name: str,
+        data: Iterable[str] | str | None = None,
+    ) -> None:
+        if data is None:
+            return
+        if isinstance(data, str):
+            values = [data]
+        elif isinstance(data, Iterable):
+            values = [str(item) for item in data if str(item)]
+        else:
+            values = [str(data)]
+        if not values:
             return
 
         # replace
         Blue(logging.info, f"Save tag {name} in {self.folder_name}")
         file_name = replace_file_name(f"{name}.tag")
         file_path = os_path.join(info_folder_path, file_name)
-        await save_data(file_path, "\n".join(data))
+        await save_data(file_path, "\n".join(values))
 
-    async def _save_images(self, path: str, images: list | None = None):
+    async def _save_images(
+        self, path: str, images: list[dict[str, Any]] | None = None
+    ) -> None:
         if images is None:
-            images = self.file_info.get("images", None)
+            images = self.file_info.get("images")
         if images is None:
             return
         Blue(logging.info, f"Save {self.folder_name} image.")
@@ -66,7 +78,9 @@ class Folder:
             ]
         )
 
-    async def _merge_old_tags(self, new_info_path: str, old_tags: dict):
+    async def _merge_old_tags(
+        self, new_info_path: str, old_tags: dict[str, list[str]]
+    ) -> None:
         """Merge old tags with new tags, preserving unique values"""
         Blue(logging.info, f"Merging old tags with new tags for {self.folder_name}")
         for tag_file, old_values in old_tags.items():
@@ -113,10 +127,10 @@ class Folder:
     # ---------------------------------------
     # ---------------------------------------
 
-    def use_crawler(self, crawler):
+    def use_crawler(self, crawler: Any) -> None:
         self.crawler = crawler
 
-    def move_to(self, folder_name, new_name=None):
+    def move_to(self, folder_name: str, new_name: str | None = None) -> None:
         code_path = os_path.join(self.root_path, folder_name)
         Cyan(logging.info, f"Move Folder {self.root_path} TO {code_path} - {new_name}")
 
@@ -124,7 +138,7 @@ class Folder:
         check_and_make_folder(code_path)
 
         # Move file.
-        if new_name == None:
+        if new_name is None:
             new_name = self.folder_name
         new_path = os_path.join(code_path, new_name)
 
@@ -134,17 +148,13 @@ class Folder:
             new_path = os_path.join(duplicate_path, f"{new_name}_{time.time()}")
 
         try:
-            file = open(
-                os_path.join(self.path, ".dlsite_classification.path.old"),
-                "a+",
-                encoding="utf-8",
-            )
-            file.write(self.path + "\n")
-            file.write(new_path + "\n")
-            file.close()
+            history_path = os_path.join(self.path, ".dlsite_classification.path.old")
+            with open(history_path, "a+", encoding="utf-8") as history_file:
+                history_file.write(self.path + "\n")
+                history_file.write(new_path + "\n")
             os.rename(self.path, new_path)
-        except BaseException as e:
-            Red(logging.error, e)
+        except Exception as exc:
+            Red(logging.error, str(exc))
             return
 
         # Update name and path.
@@ -154,7 +164,7 @@ class Folder:
     # ---------------------------------------
     # ---------------------------------------
 
-    def check_folder_package(self):
+    def check_folder_package(self) -> None:
         Cyan(
             logging.info,
             f"==========Start Check Folder Recursive in {self.path}==========",
@@ -182,7 +192,7 @@ class Folder:
             self._get_path(new_path)
             self.check_folder_package()
 
-    def classification_type(self, is_move=True):
+    def classification_type(self, is_move: bool = True) -> str:
         Cyan(logging.info, f"Get {self.folder_name} Code in {self.path}")
         code = REGEX_RJ.findall(self.folder_name)
         if len(code) != 0:
@@ -194,7 +204,7 @@ class Folder:
             self.move_to("other")
         return "other"
 
-    async def set_request_failed(self):
+    async def set_request_failed(self) -> None:
         if self.crawler is None:
             raise Exception("Not use crawler.")
         code = self.crawler.code
@@ -207,11 +217,9 @@ class Folder:
         if self.crawler is None:
             raise Exception("Not use crawler.")
         self.file_info = self.crawler.get_info()
-        if self.file_info is None:
-            return False
-        return True
+        return self.file_info is not None
 
-    async def classify(self, is_move=True, merge_tags=False):
+    async def classify(self, is_move: bool = True, merge_tags: bool = False) -> None:
         Cyan(logging.info, f"==========Start Classify Folder in {self.path}==========")
         # Create info folder
         code = self.file_info.get("code", "")

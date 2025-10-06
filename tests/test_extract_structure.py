@@ -3,10 +3,10 @@ import pytest
 from pydantic import ValidationError
 
 from dlsite_classification.extract.structure import (
-    Tag,
-    WorkInfo,
-    Work,
     Company,
+    Tag,
+    Work,
+    WorkInfo,
     conversion_table,
 )
 

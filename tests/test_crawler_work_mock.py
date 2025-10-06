@@ -12,12 +12,13 @@ Test Coverage:
     - Async operation flow
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from bs4 import BeautifulSoup
 
+from dlsite_classification.common.dlsite import BJ_WEBPATH, RJ_WEBPATH, VJ_WEBPATH
 from dlsite_classification.crawler.work import DLsiteWorkCrawler
-from dlsite_classification.common.dlsite import RJ_WEBPATH, BJ_WEBPATH, VJ_WEBPATH
 
 
 # ============================================================================

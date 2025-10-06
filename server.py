@@ -1,4 +1,7 @@
+# mypy: ignore-errors
+
 import argparse
+import logging
 import os
 import re
 from typing import Any
@@ -264,7 +267,7 @@ def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
         if tag.genre and isinstance(tag.genre, dict):
             # Remove duplicates while preserving order and filtering empty values
             seen = set()
-            for g in tag.genre.keys():
+            for g in tag.genre:
                 if g and g.strip():  # Filter out empty or whitespace-only strings
                     g_cleaned = g.strip()
                     g_lower = g_cleaned.lower()
@@ -275,7 +278,7 @@ def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
         # Extract work format with smart splitting and normalization
         work_format = []
         if tag.work_format and isinstance(tag.work_format, dict):
-            for format_str in tag.work_format.keys():
+            for format_str in tag.work_format:
                 work_format.extend(split_and_normalize_formats(format_str))
             work_format = normalize_and_deduplicate_list(work_format)
 
@@ -566,7 +569,7 @@ async def get_work_detail(code: str):
     if not extract_data.classification_table:
         await extract_data.scan_file()
 
-    for company_name, company_data in extract_data.classification_table.items():
+    for _company_name, company_data in extract_data.classification_table.items():
         for work_folder, work in company_data.work_item.items():
             if work.code == code:
                 work_response = convert_work_to_response(work, work_folder)
@@ -612,10 +615,10 @@ async def get_all_genres():
         await extract_data.scan_file()
 
     genre_counts = {}
-    for company_name, company_data in extract_data.classification_table.items():
-        for work_folder, work in company_data.work_item.items():
+    for _company_name, company_data in extract_data.classification_table.items():
+        for _work_folder, work in company_data.work_item.items():
             if work.info and work.info.tag and work.info.tag.genre:
-                for genre in work.info.tag.genre.keys():
+                for genre in work.info.tag.genre:
                     if genre and genre.strip():
                         normalized_genre = genre.strip()
                         if normalized_genre in genre_counts:
@@ -642,10 +645,10 @@ async def get_all_work_formats():
         await extract_data.scan_file()
 
     all_work_formats = set()
-    for company_name, company_data in extract_data.classification_table.items():
-        for work_folder, work in company_data.work_item.items():
+    for _, company_data in extract_data.classification_table.items():
+        for _, work in company_data.work_item.items():
             if work.info and work.info.tag and work.info.tag.work_format:
-                for format_str in work.info.tag.work_format.keys():
+                for format_str in work.info.tag.work_format:
                     normalized_formats = split_and_normalize_formats(format_str)
                     all_work_formats.update(normalized_formats)
 
@@ -658,10 +661,10 @@ async def get_all_file_formats():
         await extract_data.scan_file()
 
     all_file_formats = set()
-    for company_name, company_data in extract_data.classification_table.items():
-        for work_folder, work in company_data.work_item.items():
+    for _, company_data in extract_data.classification_table.items():
+        for _, work in company_data.work_item.items():
             if work.info and work.info.tag and work.info.tag.file_format:
-                for format_str in work.info.tag.file_format.keys():
+                for format_str in work.info.tag.file_format:
                     normalized_formats = split_and_normalize_formats(format_str)
                     all_file_formats.update(normalized_formats)
 
@@ -681,8 +684,8 @@ async def update_user_data(code: str, user_data: UserDataRequest):
         await extract_data.scan_file()
 
     # Find the work
-    for company_name, company_data in extract_data.classification_table.items():
-        for work_folder, work in company_data.work_item.items():
+    for _, company_data in extract_data.classification_table.items():
+        for _, work in company_data.work_item.items():
             if work.code == code:
                 if not work.info or not work.info.path:
                     raise HTTPException(status_code=404, detail="Work info not found")
@@ -701,7 +704,7 @@ async def update_user_data(code: str, user_data: UserDataRequest):
                     except Exception as e:
                         raise HTTPException(
                             status_code=500, detail=f"Failed to save rating: {e}"
-                        )
+                        ) from e
 
                 # Save single collection (backward compatibility)
                 if user_data.collection is not None:
@@ -715,7 +718,7 @@ async def update_user_data(code: str, user_data: UserDataRequest):
                     except Exception as e:
                         raise HTTPException(
                             status_code=500, detail=f"Failed to save collection: {e}"
-                        )
+                        ) from e
 
                 # Save multiple collections
                 if user_data.collections is not None:
@@ -730,7 +733,7 @@ async def update_user_data(code: str, user_data: UserDataRequest):
                     except Exception as e:
                         raise HTTPException(
                             status_code=500, detail=f"Failed to save collections: {e}"
-                        )
+                        ) from e
 
                     # Also update single collection for backward compatibility
                     if user_data.collections:
@@ -742,8 +745,10 @@ async def update_user_data(code: str, user_data: UserDataRequest):
                             if work.info.tag:
                                 work.info.tag.my_collection = user_data.collections[0]
                         except Exception as e:
-                            print(
-                                f"Warning: Failed to save backward compatible collection: {e}"
+                            logging.warning(
+                                "Failed to save backward compatible collection for %s: %s",
+                                code,
+                                e,
                             )
 
                 # No need to refresh all data - we've updated in-memory
@@ -761,8 +766,8 @@ async def get_collections():
         await extract_data.scan_file()
 
     collections = set()
-    for company_name, company_data in extract_data.classification_table.items():
-        for work_folder, work in company_data.work_item.items():
+    for _, company_data in extract_data.classification_table.items():
+        for _, work in company_data.work_item.items():
             if work.info and work.info.tag:
                 # Add single collection
                 if work.info.tag.my_collection:
@@ -804,9 +809,9 @@ async def get_image(path: str):
             decoded_path, DATA_PATH, check_exists=True
         )
     except PathSecurityError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     return FileResponse(validated_path)
 

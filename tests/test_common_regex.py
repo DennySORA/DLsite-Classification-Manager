@@ -5,11 +5,12 @@ Testing regex patterns for DLsite codes, company folders, and path validation.
 """
 
 import pytest
+
 from dlsite_classification.common.regex import (
     REGEX_COMPANY_FOLDER,
-    REGEX_RJ,
+    REGEX_PATH_REPLACE,
     REGEX_RG,
-    REGEX_PATH_REPLACE
+    REGEX_RJ,
 )
 
 

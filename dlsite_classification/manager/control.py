@@ -48,7 +48,7 @@ async def user_control():
         Green(print, f"\n  -1: {exit_text}\n")
         try:
             select = int(input(f"{select_prompt}: "))
-        except:
+        except ValueError:
             continue
 
         if select == 0:

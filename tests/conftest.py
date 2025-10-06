@@ -1,10 +1,11 @@
 """Shared pytest fixtures and configuration."""
 import os
-import tempfile
 import shutil
+import tempfile
+from collections.abc import Generator
 from pathlib import Path
+
 import pytest
-from typing import Generator
 
 
 @pytest.fixture

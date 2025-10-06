@@ -101,7 +101,10 @@ class ExtractFolder:
             work_folder_path = os.path.join(path, work_folder)
             try:
                 info_data = await self.scan_work(work_folder_path, code)
-            except:
+            except Exception as exc:
+                logging.exception(
+                    "Failed to scan work folder %s: %s", work_folder_path, exc
+                )
                 info_data = None
             result[work_folder] = Work(
                 name=name, path=work_folder_path, code=code, info=info_data
@@ -142,7 +145,7 @@ class ExtractFolder:
                                 int(data[0]),
                                 data[1] if len(data) == 2 else "",
                             )
-                        except:
+                        except (IndexError, ValueError):
                             minimal_data[eng_name] = None
                     else:
                         minimal_data[eng_name] = {i: True for i in data if i.strip()}

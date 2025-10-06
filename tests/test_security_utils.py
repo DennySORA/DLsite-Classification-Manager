@@ -8,15 +8,16 @@ This module tests the dlsite_classification.common.security module with:
 - 100% code coverage target
 """
 
-import pytest
 import os
 from pathlib import Path
 
+import pytest
+
 from dlsite_classification.common.security import (
-    validate_path_within_root,
-    is_path_safe,
-    get_safe_path,
     PathSecurityError,
+    get_safe_path,
+    is_path_safe,
+    validate_path_within_root,
 )
 
 

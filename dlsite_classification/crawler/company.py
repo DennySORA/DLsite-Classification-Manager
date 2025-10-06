@@ -16,10 +16,12 @@ class DLsiteCompanyCrawler:
         self.info = list()
 
     def _get_text_url_in_a(self, meta: BeautifulSoup) -> tuple[str, str]:
-        try:
-            return [meta.a.text.replace("\n", ""), meta.a.get("href")]
-        except:
-            return ["", ""]
+        anchor = getattr(meta, "a", None)
+        if anchor is None:
+            return "", ""
+        text = anchor.text.replace("\n", "")
+        href = anchor.get("href") or ""
+        return text, href
 
     def _get_dlsite_company_url(self) -> str:
         return (
