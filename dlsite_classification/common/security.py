@@ -71,11 +71,20 @@ def validate_path_within_root(
         raise PathSecurityError(f"Invalid path: {e}") from e
 
     # Security check: ensure file is within root directory
-    if not real_file_path.startswith(real_root_path):
+    # Use os.path.commonpath to prevent prefix-based bypasses (e.g., /data2)
+    try:
+        common = os.path.commonpath([real_file_path, real_root_path])
+        if common != real_root_path:
+            raise PathSecurityError(
+                f"Access denied: path '{file_path}' is outside "
+                f"allowed directory '{root_path}'"
+            )
+    except ValueError as e:
+        # Paths are on different drives (Windows) or one is relative
         raise PathSecurityError(
             f"Access denied: path '{file_path}' is outside "
             f"allowed directory '{root_path}'"
-        )
+        ) from e
 
     # Optional existence check
     if check_exists and not os.path.exists(real_file_path):

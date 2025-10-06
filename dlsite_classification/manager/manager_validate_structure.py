@@ -382,6 +382,15 @@ def _truncate_string(s, max_len):
     Returns:
         截斷後的字串
     """
+    if not isinstance(s, str):
+        s = str(s)
+    # Normalize newlines to prevent log formatting breaks
+    s = s.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+    if max_len <= 0:
+        return ""
     if len(s) <= max_len:
         return s
+    if max_len <= 2:
+        return s[:max_len]
+    # Keep total length <= max_len
     return s[: max_len - 2] + ".."

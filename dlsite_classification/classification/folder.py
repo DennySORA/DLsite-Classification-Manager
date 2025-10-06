@@ -44,12 +44,17 @@ class Folder:
             return
         if isinstance(data, str):
             values = [data]
+        elif isinstance(data, bytes):
+            values = [data.decode("utf-8", errors="ignore")]
         elif isinstance(data, Iterable):
             values = [str(item) for item in data if str(item)]
         else:
             values = [str(data)]
         if not values:
             return
+
+        # Ensure destination folder exists
+        check_and_make_folder(info_folder_path)
 
         # replace
         Blue(logging.info, f"Save tag {name} in {self.folder_name}")
@@ -105,21 +110,33 @@ class Folder:
                     Yellow(logging.warning, f"Failed to merge tag {tag_file}: {e}")
 
     def _get_rename(self, code: str, is_company: bool = False) -> str:
-        # Get Title and company
-        title = self.file_info.get("title", list())[0]
-        company = self.file_info.get("company", list())
-        company_name = company[0]
-        company_code_name = REGEX_RG.findall(company[1])[0].replace("\n", "")
+        # Safely get title and company data
+        title_list = self.file_info.get("title") or []
+        title = title_list[0] if isinstance(title_list, list) and title_list else ""
+
+        company_list = self.file_info.get("company") or []
+        company_name = company_list[0] if len(company_list) > 0 else ""
+        company_href = company_list[1] if len(company_list) > 1 else ""
+
+        # Extract company code safely
+        rg_matches = REGEX_RG.findall(company_href or "")
+        company_code_name = (rg_matches[0] if rg_matches else "").replace("\n", "")
+
+        # Fallbacks to avoid empty names
+        safe_code = code or self.file_info.get("code", "") or self.folder_name
+        safe_company = company_name or "UnknownCompany"
+        safe_company_code = company_code_name or "UnknownRG"
+        safe_title = title or self.folder_name
 
         if is_company:
             return os_path.join(
                 os_path.split(self.root_path)[0],
-                replace_file_name(f"[{company_name}]_[{company_code_name}]"),
+                replace_file_name(f"[{safe_company}]_[{safe_company_code}]"),
             )
         return os_path.join(
             self.root_path,
             replace_file_name(
-                f"[{code}]_[{company_name}]_[{company_code_name}] {title}"
+                f"[{safe_code}]_[{safe_company}]_[{safe_company_code}] {safe_title}"
             ),
         )
 
@@ -152,7 +169,9 @@ class Folder:
             with open(history_path, "a+", encoding="utf-8") as history_file:
                 history_file.write(self.path + "\n")
                 history_file.write(new_path + "\n")
-            os.rename(self.path, new_path)
+            # Use shutil.move for robust cross-device move
+            check_and_make_folder(os_path.dirname(new_path))
+            shutil.move(self.path, new_path)
         except Exception as exc:
             Red(logging.error, str(exc))
             return
@@ -305,7 +324,7 @@ class Folder:
 
         Blue(logging.info, f"==========End Classify Folder in {self.path}==========")
 
-    async def rename(self, is_company: bool = False):
+    async def rename(self, is_company: bool = False) -> None:
         code = self.file_info.get("code", "")
 
         if is_company:
@@ -315,12 +334,12 @@ class Folder:
         else:
             os.rename(self.path, self._get_rename(code))
 
-    def finish(self):
+    def finish(self) -> None:
         Cyan(
             logging.info, f"==========Start Move Finish Folder in {self.path}=========="
         )
         root = os_path.join(self.root_path, "../../finish/")
-        company = self.file_info.get("company", list())
+        company: list[str] = self.file_info.get("company", [])
         if len(company) == 0:
             Yellow(logging.warning, "Not company in {self.path}")
             return

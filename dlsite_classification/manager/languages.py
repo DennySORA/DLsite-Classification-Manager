@@ -52,6 +52,10 @@ class MenuLanguage:
                     "title": "驗證並移動問題資料夾",
                     "desc": "檢查資料夾結構，並將有問題的資料夾移動到指定目錄",
                 },
+                "10": {
+                    "title": "建立公司作品檔案庫",
+                    "desc": "掃描公司資料夾，建立 ARCHIVE 子資料夾，收錄該公司所有作品的完整資訊",
+                },
             },
         },
         "en": {
@@ -97,6 +101,10 @@ class MenuLanguage:
                     "title": "Validate and move problematic folders",
                     "desc": "Check folder structure and move problematic folders to specified directory",
                 },
+                "10": {
+                    "title": "Create Company Works Archive",
+                    "desc": "Scan company folders, create ARCHIVE subfolder with complete info for all company works",
+                },
             },
         },
         "ja": {
@@ -141,6 +149,10 @@ class MenuLanguage:
                 "9": {
                     "title": "問題のあるフォルダを検証して移動",
                     "desc": "フォルダ構造をチェックし、問題のあるフォルダを指定したディレクトリに移動",
+                },
+                "10": {
+                    "title": "サークル作品アーカイブを作成",
+                    "desc": "サークルフォルダをスキャンし、ARCHIVEサブフォルダを作成してすべての作品情報を保存",
                 },
             },
         },

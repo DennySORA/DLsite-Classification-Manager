@@ -1,10 +1,11 @@
 import asyncio
 import logging
+import re
 
 from bs4 import BeautifulSoup
 
 from dlsite_classification.common.regex import REGEX_RG
-from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red
+from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red, Yellow
 
 from .common import CommonCrawler
 
@@ -156,3 +157,196 @@ class DLsiteCompanyCrawler:
         if len(self.info) != 0:
             return self.info
         return None
+
+    # New methods for efficient work ID extraction (for ARCHIVE feature)
+
+    def _construct_company_works_url(self, page: int = 1) -> str:
+        """Construct company works listing URL with pagination.
+
+        Args:
+            page: Page number (1-indexed)
+
+        Returns:
+            URL for the company works page
+        """
+        base_url = (
+            f"https://www.dlsite.com/maniax/circle/profile/="
+            f"/order%5B0%5D/release_d"
+            f"/options%5B0%5D/JPN"
+            f"/options%5B1%5D/NM"
+            f"/per_page/100"
+            f"/show_type/1"
+            f"/hd/1"
+            f"/lang_options%5B0%5D/%E6%97%A5%E6%9C%AC%E8%AA%9E"
+            f"/lang_options%5B1%5D/%E8%A8%80%E8%AA%9E%E4%B8%8D%E8%A6%81"
+            f"/page/{page}"
+            f"/maker_id/{self.code}.html"
+        )
+        return base_url
+
+    async def _fetch_page_with_retry(
+        self, page: int, retry_count: int = 0, max_retries: int = 3
+    ) -> tuple[str, BeautifulSoup]:
+        """Fetch a page with exponential backoff retry.
+
+        Args:
+            page: Page number to fetch
+            retry_count: Current retry attempt number
+            max_retries: Maximum number of retry attempts
+
+        Returns:
+            Tuple of (html, BeautifulSoup object)
+
+        Raises:
+            ValueError: If all retry attempts fail
+        """
+        url = self._construct_company_works_url(page)
+        try:
+            Green(logging.info, f"Fetching company {self.code} page {page}")
+            html, bs4 = await CommonCrawler.get_request(url)
+            return html, bs4
+        except Exception as e:
+            if retry_count < max_retries:
+                wait_time = (2**retry_count) * 2
+                Red(
+                    logging.warning,
+                    f"Fetch failed for page {page}, retry {retry_count + 1}/"
+                    f"{max_retries} after {wait_time}s: {e}",
+                )
+                await asyncio.sleep(wait_time)
+                return await self._fetch_page_with_retry(page, retry_count + 1)
+            else:
+                Red(logging.error, f"Failed after {max_retries} retries: {e}")
+                raise
+
+    def _extract_work_ids_from_page(self, bs4: BeautifulSoup) -> list[str]:
+        """Extract all work IDs from a single page.
+
+        Only extracts work IDs from the main work table (work_1col_table),
+        not from recommendations, ads, or other sections on the page.
+
+        Args:
+            bs4: BeautifulSoup object of the page
+
+        Returns:
+            List of unique work IDs found on the page
+        """
+        work_ids = []
+
+        # Find work table - only extract IDs from actual work listings
+        work_tables = bs4.find_all("table", "work_1col_table")
+        if not work_tables:
+            Yellow(
+                logging.warning,
+                f"No work table found on page for company {self.code}",
+            )
+            return work_ids
+
+        # Use the last table which typically contains the work list
+        work_table = work_tables[-1]
+
+        # Find all rows with data-product_id within the work table
+        elements = work_table.find_all(attrs={"data-product_id": True})
+
+        for elem in elements:
+            work_id = elem.get("data-product_id")
+            if (
+                work_id
+                and work_id not in work_ids
+                and re.match(r"^[RBV][JE]\d+$", work_id)
+            ):
+                work_ids.append(work_id)
+
+        return work_ids
+
+    def _extract_total_work_count(self, bs4: BeautifulSoup) -> int | None:
+        """Extract total work count from pagination info.
+
+        Args:
+            bs4: BeautifulSoup object of the page
+
+        Returns:
+            Total work count, or None if not found
+        """
+        page_total = bs4.find("div", class_="page_total")
+        if page_total:
+            text = page_total.get_text()
+            match = re.search(r"(\d+)件中", text)
+            if match:
+                return int(match.group(1))
+        return None
+
+    async def get_all_work_ids(self, rate_limit_delay: float = 2.0) -> list[str]:
+        """Efficiently crawl all pages to get just work IDs.
+
+        This method is optimized for the ARCHIVE feature where we only need
+        work IDs, not full work details.
+
+        Args:
+            rate_limit_delay: Delay between page requests in seconds
+
+        Returns:
+            List of all unique work IDs for this company
+
+        Raises:
+            ValueError: If company has no works or crawling fails
+        """
+        Cyan(
+            logging.info,
+            f"==========Start Extracting Work IDs for Company {self.code}==========",
+        )
+
+        # Fetch first page
+        _, bs4 = await self._fetch_page_with_retry(1)
+
+        # Extract work IDs from first page
+        all_work_ids = self._extract_work_ids_from_page(bs4)
+        if not all_work_ids:
+            Red(logging.error, f"No works found for company {self.code}")
+            raise ValueError(f"No works found for company {self.code}")
+
+        Green(logging.info, f"Found {len(all_work_ids)} works on page 1")
+
+        # Determine total pages
+        total_count = self._extract_total_work_count(bs4)
+        if total_count:
+            total_pages = (total_count + 99) // 100
+            Cyan(
+                logging.info,
+                f"Company {self.code}: {total_count} total works, {total_pages} pages",
+            )
+
+            # Fetch remaining pages
+            if total_pages > 1:
+                for page in range(2, total_pages + 1):
+                    await asyncio.sleep(rate_limit_delay)
+
+                    try:
+                        _, bs4 = await self._fetch_page_with_retry(page)
+                        page_ids = self._extract_work_ids_from_page(bs4)
+                        all_work_ids.extend(page_ids)
+                        Green(
+                            logging.info,
+                            f"Found {len(page_ids)} works on page {page}",
+                        )
+                    except Exception as e:
+                        Yellow(
+                            logging.warning,
+                            f"Skipping page {page} due to error: {e}",
+                        )
+        else:
+            Yellow(
+                logging.warning,
+                f"Could not determine total pages for {self.code}",
+            )
+
+        # Remove duplicates while preserving order
+        unique_ids = list(dict.fromkeys(all_work_ids))
+
+        Blue(
+            logging.info,
+            f"==========Extracted {len(unique_ids)} unique work IDs for "
+            f"company {self.code}==========",
+        )
+
+        return unique_ids

@@ -12,11 +12,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from dlsite_classification.common.regex import REGEX_RG
 from dlsite_classification.common.security import (
     PathSecurityError,
     validate_path_within_root,
 )
+from dlsite_classification.crawler.company import DLsiteCompanyCrawler
 from dlsite_classification.extract.extract import ExtractFolder
+from dlsite_classification.manager.manager_company_archive import (
+    create_company_archives,
+)
 from dlsite_classification.tools.url import build_image_url, decode_url_path
 
 
@@ -245,7 +250,7 @@ class SearchResponse(BaseModel):
 
 
 # Helper function to convert work data
-def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
+def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse | None:
     try:
         if not work.info or not work.info.tag:
             return None
@@ -346,7 +351,9 @@ def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
             my_collections=my_collections,
         )
     except Exception as e:
-        print(f"Error converting work {work.code}: {e}")
+        logging.exception(
+            "Error converting work to response for folder %s: %s", work_folder, e
+        )
         return None
 
 
@@ -510,15 +517,19 @@ async def get_works(
             if any(file_format.lower() in ff.lower() for ff in work.file_size)
         ]
 
-    # Sorting
+    # Sorting with safe rating conversion
+    def safe_rating(w: WorkResponse) -> int:
+        try:
+            return int(w.my_rating) if w.my_rating is not None else 0
+        except (ValueError, TypeError):
+            return 0
+
     if sort == "sale_date":
         filtered_works.sort(key=lambda x: x.sale_date or "", reverse=True)
     elif sort == "company":
         filtered_works.sort(key=lambda x: x.company.lower())
     elif sort == "rating":
-        filtered_works.sort(
-            key=lambda x: int(x.my_rating) if x.my_rating else 0, reverse=True
-        )
+        filtered_works.sort(key=safe_rating, reverse=True)
     elif sort == "collection":
         filtered_works.sort(key=lambda x: x.my_collection or "")
     else:  # title
@@ -675,6 +686,271 @@ class UserDataRequest(BaseModel):
     rating: str | None = None
     collection: str | None = None
     collections: list[str] | None = None
+
+
+class CompanyWorksStatusResponse(BaseModel):
+    """Response for company works status comparison."""
+
+    company_id: str
+    company_name: str
+    total_on_dlsite: int
+    owned_works: list[dict[str, Any]]
+    missing_works: list[dict[str, Any]]
+    archive_status: dict[str, Any]
+
+
+class CompanyListItem(BaseModel):
+    """Company list item for dropdown."""
+
+    id: str
+    name: str
+    folder_name: str
+    work_count: int
+
+
+class ArchiveCreationRequest(BaseModel):
+    """Request body for archive creation."""
+
+    force_update: bool = False
+
+
+@app.get("/companies/list")
+async def get_companies_list():
+    """Get list of all companies with their IDs for dropdown selection."""
+    if not extract_data.classification_table:
+        await extract_data.scan_file()
+
+    companies = []
+    for folder_name, company_data in extract_data.classification_table.items():
+        # Extract company ID from folder name
+        matches = REGEX_RG.findall(folder_name)
+        company_id = matches[0] if matches else ""
+
+        if company_id:
+            companies.append(
+                CompanyListItem(
+                    id=company_id,
+                    name=company_data.name,
+                    folder_name=folder_name,
+                    work_count=len(company_data.work_item),
+                )
+            )
+
+    # Sort by company name
+    companies.sort(key=lambda x: x.name)
+    return {"companies": [c.model_dump() for c in companies]}
+
+
+@app.get("/company/{company_id}/works-status")
+async def get_company_works_status(company_id: str):
+    """Compare owned works vs all works on DLsite for a company.
+
+    Returns which works the user owns and which are missing.
+    """
+    if not extract_data.classification_table:
+        await extract_data.scan_file()
+
+    # Find company folder
+    company_data = None
+    company_folder_path = None
+
+    for folder_name, data in extract_data.classification_table.items():
+        matches = REGEX_RG.findall(folder_name)
+        if matches and matches[0] == company_id:
+            company_data = data
+            company_folder_path = os.path.join(DATA_PATH, folder_name)
+            break
+
+    if not company_data:
+        raise HTTPException(status_code=404, detail=f"Company {company_id} not found")
+
+    # Get owned work codes
+    owned_codes = set()
+    owned_works_info = []
+    for work_folder, work in company_data.work_item.items():
+        if work.code:
+            owned_codes.add(work.code)
+            # Get basic work info
+            title = ""
+            if work.info and work.info.tag and work.info.tag.title:
+                if isinstance(work.info.tag.title, dict):
+                    title = list(work.info.tag.title.keys())[0]
+                else:
+                    title = str(work.info.tag.title)
+            owned_works_info.append(
+                {
+                    "code": work.code,
+                    "title": title,
+                    "folder": work_folder,
+                }
+            )
+
+    # Try to get all work IDs from DLsite
+    try:
+        crawler = DLsiteCompanyCrawler(code=company_id)
+        all_dlsite_codes = await crawler.get_all_work_ids(rate_limit_delay=1.5)
+    except Exception as e:
+        logging.error(f"Failed to crawl company {company_id}: {e}")
+        # Return partial data if crawling fails
+        return CompanyWorksStatusResponse(
+            company_id=company_id,
+            company_name=company_data.name,
+            total_on_dlsite=-1,  # Indicates crawl failure
+            owned_works=owned_works_info,
+            missing_works=[],
+            archive_status={
+                "error": str(e),
+                "has_archive": os.path.isdir(
+                    os.path.join(company_folder_path or "", "ARCHIVE")
+                ),
+            },
+        ).model_dump()
+
+    # Calculate missing works
+    all_dlsite_set = set(all_dlsite_codes)
+    missing_codes = all_dlsite_set - owned_codes
+    missing_works = [
+        {"code": code, "title": "", "folder": ""} for code in missing_codes
+    ]
+
+    # Check ARCHIVE status
+    archive_path = os.path.join(company_folder_path or "", "ARCHIVE")
+    archive_exists = os.path.isdir(archive_path)
+    archived_count = 0
+    if archive_exists:
+        for item in os.listdir(archive_path):
+            if item.endswith("_info") and os.path.isdir(
+                os.path.join(archive_path, item)
+            ):
+                archived_count += 1
+
+    return CompanyWorksStatusResponse(
+        company_id=company_id,
+        company_name=company_data.name,
+        total_on_dlsite=len(all_dlsite_codes),
+        owned_works=owned_works_info,
+        missing_works=missing_works,
+        archive_status={
+            "has_archive": archive_exists,
+            "archived_count": archived_count,
+            "archive_path": archive_path if archive_exists else None,
+        },
+    ).model_dump()
+
+
+@app.post("/company/{company_id}/archive")
+async def create_company_archive(company_id: str, request: ArchiveCreationRequest):
+    """Create or update ARCHIVE folder for a specific company.
+
+    Downloads metadata for all works by this company from DLsite.
+    """
+    if not extract_data.classification_table:
+        await extract_data.scan_file()
+
+    # Find company folder
+    company_folder_path = None
+    for folder_name in extract_data.classification_table:
+        matches = REGEX_RG.findall(folder_name)
+        if matches and matches[0] == company_id:
+            company_folder_path = os.path.join(DATA_PATH, folder_name)
+            break
+
+    if not company_folder_path:
+        raise HTTPException(status_code=404, detail=f"Company {company_id} not found")
+
+    try:
+        results = await create_company_archives(
+            data_path=DATA_PATH,
+            specific_company_id=company_id,
+            force_update=request.force_update,
+            max_concurrent_works=3,
+            rate_limit_delay=2.5,
+        )
+        return {
+            "status": "success",
+            "company_id": company_id,
+            "works_archived": results.get(company_id, 0),
+        }
+    except Exception as e:
+        logging.error(f"Failed to create archive for {company_id}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Archive creation failed: {e}"
+        ) from e
+
+
+@app.get("/company/{company_id}/archive-info")
+async def get_company_archive_info(company_id: str):
+    """Get detailed ARCHIVE information for a company.
+
+    Returns list of all archived works with their info status.
+    """
+    if not extract_data.classification_table:
+        await extract_data.scan_file()
+
+    # Find company folder
+    company_folder_path = None
+    company_name = ""
+    for folder_name, data in extract_data.classification_table.items():
+        matches = REGEX_RG.findall(folder_name)
+        if matches and matches[0] == company_id:
+            company_folder_path = os.path.join(DATA_PATH, folder_name)
+            company_name = data.name
+            break
+
+    if not company_folder_path:
+        raise HTTPException(status_code=404, detail=f"Company {company_id} not found")
+
+    archive_path = os.path.join(company_folder_path, "ARCHIVE")
+    if not os.path.isdir(archive_path):
+        return {
+            "company_id": company_id,
+            "company_name": company_name,
+            "has_archive": False,
+            "archived_works": [],
+        }
+
+    # List all archived works
+    archived_works = []
+    for item in os.listdir(archive_path):
+        if item.endswith("_info") and os.path.isdir(os.path.join(archive_path, item)):
+            work_code = item.replace("_info", "")
+            info_path = os.path.join(archive_path, item)
+
+            # Get basic info from tags if available
+            title = ""
+            title_tag = os.path.join(info_path, "title.tag")
+            if os.path.isfile(title_tag):
+                try:
+                    with open(title_tag, encoding="utf-8") as f:
+                        title = f.read().strip().split("\n")[0]
+                except Exception:
+                    pass
+
+            # Check if main image exists
+            has_image = any(
+                f.endswith(("_img_main.jpg", "_img_main.png", "_img_main.webp"))
+                for f in os.listdir(info_path)
+            )
+
+            archived_works.append(
+                {
+                    "code": work_code,
+                    "title": title,
+                    "has_image": has_image,
+                    "info_path": info_path,
+                }
+            )
+
+    # Sort by code
+    archived_works.sort(key=lambda x: x["code"])
+
+    return {
+        "company_id": company_id,
+        "company_name": company_name,
+        "has_archive": True,
+        "archived_count": len(archived_works),
+        "archived_works": archived_works,
+    }
 
 
 @app.post("/work/{code}/user-data")

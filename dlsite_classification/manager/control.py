@@ -2,6 +2,7 @@ from dlsite_classification.spkg.logs import Blue, Green, Yellow
 
 from .languages import MenuLanguage
 from .manager_auto_classificatiom import classification_depth_one_folder_func
+from .manager_company_archive import create_company_archives
 from .manager_compare_folder_name import (
     compare_file_hash_func,
     compare_folder_name_func,
@@ -40,7 +41,7 @@ async def user_control():
         print()
 
         # 顯示所有選單項目
-        for number in range(1, 10):
+        for number in range(1, 11):
             item = MenuLanguage.get_text("menu_items", str(number))
             _print_menu_item(str(number), item["title"], item["desc"])
 
@@ -83,3 +84,14 @@ async def user_select(select):
         path = input("Input source path: ")
         move_to = input("Input target path (e.g., /mnt/d/R18/DLsite_TEMP): ")
         await validate_structure_func(path, move_to)
+    elif select == 10:
+        path = input("Input data path: ")
+        company_id = input(
+            "Input specific company ID (leave empty for all companies): "
+        ).strip()
+        force = input("Force re-download existing archives? [Y/n]: ").strip().upper()
+        await create_company_archives(
+            data_path=path if path else None,
+            specific_company_id=company_id if company_id else None,
+            force_update=force == "Y",
+        )

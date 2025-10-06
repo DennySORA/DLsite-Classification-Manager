@@ -25,15 +25,26 @@
       
 
       <!-- 公司標籤 -->
-      <div class="absolute top-3 right-3">
-        <button 
+      <div class="absolute top-3 right-3 flex items-center space-x-1">
+        <button
           @click.stop="filterByCompany"
-          class="px-3 py-1 text-xs font-medium text-white rounded-full border border-gray-600 hover:bg-blue-600 hover:border-blue-500 transition-all duration-200 cursor-pointer" 
+          class="px-3 py-1 text-xs font-medium text-white rounded-l-full border border-gray-600 hover:bg-blue-600 hover:border-blue-500 transition-all duration-200 cursor-pointer"
           style="background: rgba(20, 20, 30, 0.9); backdrop-filter: blur(10px);"
-          title="點擊篩選此公司作品"
+          title="篩選此公司作品"
         >
           {{ work.company }}
         </button>
+        <NuxtLink
+          :to="`/company/${encodeURIComponent(work.company)}`"
+          @click.stop
+          class="px-2 py-1 text-xs font-medium text-white rounded-r-full border border-gray-600 hover:bg-purple-600 hover:border-purple-500 transition-all duration-200 cursor-pointer flex items-center"
+          style="background: rgba(20, 20, 30, 0.9); backdrop-filter: blur(10px);"
+          title="查看公司頁面"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </NuxtLink>
       </div>
 
       <!-- 快速動作按鈕 -->

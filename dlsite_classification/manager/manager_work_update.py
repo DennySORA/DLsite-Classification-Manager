@@ -4,6 +4,9 @@ from dlsite_classification.classification.folder import Folder
 from dlsite_classification.crawler.work import DLsiteWorkCrawler
 from dlsite_classification.extract.extract import ExtractFolder
 from dlsite_classification.extract.plug import extract_folder_path
+from dlsite_classification.manager.manager_company_archive import (
+    update_existing_work_in_archive,
+)
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red
 from dlsite_classification.spkg.sasync import SAsyncRunner
 
@@ -96,6 +99,12 @@ def file_doing_manager_wrap(folder: Folder, is_rename: int, merge_tags: bool = F
                 await folder_class.rename(is_rename == 2)
             else:
                 await folder_class.classify(False, merge_tags)
+
+                # Also update ARCHIVE if it exists
+                code = folder_class.file_info.get("code", "")
+                if code:
+                    await update_existing_work_in_archive(folder_class.path, code)
+
         except BaseException as e:
             Red(logging.error, e)
 

@@ -15,6 +15,9 @@ permissions:
   security-events: write
   actions: read
 
+env:
+  UV_PYTHON: python
+
 jobs:
   lint:
     name: Lint & Static Analysis (Python ${{ matrix.python-version }})
@@ -27,10 +30,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
       - name: Set up uv
         uses: astral-sh/setup-uv@v1
         with:
-          python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: |
             uv.lock
@@ -38,6 +45,10 @@ jobs:
 
       - name: Sync dependencies
         run: uv sync --dev --frozen
+
+      - name: Apply patched dependencies
+        run: |
+          uv pip install -p .venv/bin/python --no-deps "starlette==0.47.2"
 
       - name: Ruff lint
         run: uv run ruff check --output-format=github .
@@ -96,10 +107,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
       - name: Set up uv
         uses: astral-sh/setup-uv@v1
         with:
-          python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: |
             uv.lock
@@ -107,6 +122,10 @@ jobs:
 
       - name: Sync dependencies
         run: uv sync --dev --frozen
+
+      - name: Apply patched dependencies
+        run: |
+          uv pip install -p .venv/bin/python --no-deps "starlette==0.47.2"
 
       - name: Run standardized tests
         run: ./run_tests.sh --html
@@ -143,10 +162,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
       - name: Set up uv
         uses: astral-sh/setup-uv@v1
         with:
-          python-version: "3.13"
           enable-cache: true
           cache-dependency-glob: |
             uv.lock
@@ -154,6 +177,10 @@ jobs:
 
       - name: Sync dependencies
         run: uv sync --dev --frozen
+
+      - name: Apply patched dependencies
+        run: |
+          uv pip install -p .venv/bin/python --no-deps "starlette==0.47.2"
 
       - name: Comprehensive Bandit scan
         run: |

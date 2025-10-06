@@ -8,7 +8,7 @@ from dlsite_classification.spkg.logs import Cyan, Green, Red
 from .check import check_and_make_folder, check_folder_has_file
 
 
-def move_subfolder(origin_path, to_path, need_del=False):
+def move_subfolder(origin_path: str, to_path: str, need_del: bool = False) -> None:
     logging.info(f"Move Sub Folder: {origin_path}\tTO\t{to_path}")
     if not os_path.isdir(origin_path):
         return
@@ -27,7 +27,7 @@ def move_subfolder(origin_path, to_path, need_del=False):
             Red(logging.error, str(e))
 
 
-def move_folder(root, move_to_folder, origin_folder) -> str:
+def move_folder(root: str, move_to_folder: str, origin_folder: str) -> str:
     logging.info(f"Move Folder: {origin_folder}\tTO\t{move_to_folder}")
     new_root_path = os_path.join(root, move_to_folder)
     check_and_make_folder(new_root_path)
@@ -59,7 +59,7 @@ def merge_folder_name_move(path: str, name: str, need_del: bool = True) -> str:
         return ""
 
 
-def extract_folder_top(path: str):
+def extract_folder_top(path: str) -> None:
     logging.info(f"Extract Path: {path}")
     hsa_file, white_folder = check_folder_has_file(path)
     if hsa_file:
@@ -79,8 +79,9 @@ def extract_folder_top(path: str):
             if len(new_path) == 0:
                 continue
             white_folder.append(new_path)
+        # Delete the extracted directory after processing
         try:
-            os.rmdir(os_path.join(path, folder))
+            os.rmdir(extract_path)
         except BaseException as e:
             Red(logging.error, str(e))
             return
