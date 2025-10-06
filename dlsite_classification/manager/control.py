@@ -1,14 +1,14 @@
-from .manager_auto_classificatiom import classification_depth_one_folder_func
-from .manager_move_folder_to_top import classification_folder_move_top_func
-from .manager_work_update import work_update_func
-from .manager_compare_folder_name import (
-    compare_folder_name_func,
-    compare_file_hash_func,
-)
-from .manager_validate_structure import validate_structure_func
-from .languages import MenuLanguage
+from dlsite_classification.spkg.logs import Blue, Green, Yellow
 
-from dlsite_classification.spkg.logs import Blue, Green, Cyan, Yellow
+from .languages import MenuLanguage
+from .manager_auto_classificatiom import classification_depth_one_folder_func
+from .manager_compare_folder_name import (
+    compare_file_hash_func,
+    compare_folder_name_func,
+)
+from .manager_move_folder_to_top import classification_folder_move_top_func
+from .manager_validate_structure import validate_structure_func
+from .manager_work_update import work_update_func
 
 
 def _print_menu_item(number, title, description):
@@ -31,9 +31,9 @@ async def user_control():
         select_prompt = MenuLanguage.get_text("select_prompt")
         language_prompt = MenuLanguage.get_text("language_prompt")
 
-        Blue(print, "\n" + "="*80)
+        Blue(print, "\n" + "=" * 80)
         Blue(print, title.center(80))
-        Blue(print, "="*80 + "\n")
+        Blue(print, "=" * 80 + "\n")
 
         # 顯示語言切換選項
         Green(print, language_prompt)
@@ -44,21 +44,20 @@ async def user_control():
             item = MenuLanguage.get_text("menu_items", str(number))
             _print_menu_item(str(number), item["title"], item["desc"])
 
-        Blue(print, "="*80)
+        Blue(print, "=" * 80)
         Green(print, f"\n  -1: {exit_text}\n")
         try:
             select = int(input(f"{select_prompt}: "))
-        except:
+        except ValueError:
             continue
 
         if select == 0:
             # 切換語言
             MenuLanguage.show_language_selection()
             continue
-        elif select == -1:
+        if select == -1:
             return
-        else:
-            await user_select(select)
+        await user_select(select)
 
 
 async def user_select(select):

@@ -2,10 +2,10 @@ import logging
 
 from dlsite_classification.classification.folder import Folder
 from dlsite_classification.crawler.work import DLsiteWorkCrawler
-from dlsite_classification.extract.plug import extract_folder_path
 from dlsite_classification.extract.extract import ExtractFolder
-from dlsite_classification.spkg.sasync import SAsyncRunner
+from dlsite_classification.extract.plug import extract_folder_path
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red
+from dlsite_classification.spkg.sasync import SAsyncRunner
 
 
 async def company_update_func(path=None):
@@ -42,8 +42,7 @@ async def company_update_func(path=None):
     Blue(logging.info, "==========End Create Can Crawler Folder==========")
 
     # await run
-    if need_run_func_count > 10:
-        need_run_func_count = 10
+    need_run_func_count = min(need_run_func_count, 10)
     await sasync.run(need_run_func_count)
 
 

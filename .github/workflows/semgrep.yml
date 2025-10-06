@@ -1,0 +1,45 @@
+name: Semgrep Security Scan
+
+on:
+  push:
+    branches: [ main, develop, "feat/**" ]
+  pull_request:
+    branches: [ main, develop, "feat/**" ]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  semgrep:
+    name: Semgrep Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Semgrep
+        run: python -m pip install --upgrade pip semgrep
+
+      - name: Run Semgrep
+        run: semgrep --config=p/security-audit --config=p/python --config=p/bandit --sarif --output=semgrep.sarif .
+        continue-on-error: true
+
+      - name: Upload Semgrep results to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+        continue-on-error: true
+
+      - name: Upload Semgrep results as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep.sarif

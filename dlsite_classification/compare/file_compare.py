@@ -1,14 +1,15 @@
-import os
+import hashlib
 import json
 import logging
-import hashlib
+import os
+from collections.abc import Iterator
 
 from aiofile import async_open
-from typing import Iterator
 
-from dlsite_classification.tools.scan import get_folder_cla_struct
-from dlsite_classification.spkg.sasync.running import SAsyncRunner
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red, Yellow
+from dlsite_classification.spkg.sasync.running import SAsyncRunner
+from dlsite_classification.tools.scan import get_folder_cla_struct
+
 
 BUF_SIZE = 65536
 
@@ -60,7 +61,7 @@ class FileCompare:
                 f"Need to Work task {self.compare_count}........", flush=True, end="\r"
             )
             size = os.path.getsize(file_path)
-            if hash_box.get(hash_id, None) is None:
+            if hash_box.get(hash_id) is None:
                 hash_box[hash_id] = [(file_name, file_path, size)]
                 continue
             duplicate.add(hash_id)
@@ -135,6 +136,5 @@ class FileCompare:
         Blue(logging.info, "==========End Create Compare Task==========")
 
         need_run_func_count = read_queue.qsize()
-        if need_run_func_count > 10:
-            need_run_func_count = 10
+        need_run_func_count = min(need_run_func_count, 10)
         await sasync.run(need_run_func_count)

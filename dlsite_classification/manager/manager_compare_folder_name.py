@@ -1,8 +1,8 @@
-import os
 import logging
+import os
 
-from dlsite_classification.compare.folder_compare import FolderCompare
 from dlsite_classification.compare.file_compare import FileCompare
+from dlsite_classification.compare.folder_compare import FolderCompare
 
 
 async def compare_file_hash_func():

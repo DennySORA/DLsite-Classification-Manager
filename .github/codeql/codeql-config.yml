@@ -1,0 +1,19 @@
+name: dlsitemgr-codeql
+
+packs:
+  python:
+    - codeql/python-queries
+    - codeql/python-security-and-quality
+  javascript-typescript:
+    - codeql/javascript-queries
+    - codeql/javascript-security-and-quality
+
+paths:
+  - dlsite_classification
+  - dlsite_classification_web
+
+paths-ignore:
+  - htmlcov
+  - log
+  - '**/node_modules'
+  - '**/dist'

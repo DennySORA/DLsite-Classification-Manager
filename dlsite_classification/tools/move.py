@@ -1,10 +1,9 @@
+import logging
 import os
 import shutil
-import logging
-
 from os import path as os_path
 
-from dlsite_classification.spkg.logs import Green, Cyan, Red
+from dlsite_classification.spkg.logs import Cyan, Green, Red
 
 from .check import check_and_make_folder, check_folder_has_file
 
@@ -20,12 +19,12 @@ def move_subfolder(origin_path, to_path, need_del=False):
             os.rename(os_path.join(origin_path, i), new_path)
             Green(logging.info, f"Move Sub Folder - Finish {new_path}")
         except BaseException as e:
-            Red(logging.error, e)
+            Red(logging.error, str(e))
     if need_del:
         try:
             shutil.rmtree(origin_path)
         except BaseException as e:
-            Red(logging.error, e)
+            Red(logging.error, str(e))
 
 
 def move_folder(root, move_to_folder, origin_folder) -> str:
@@ -39,7 +38,7 @@ def move_folder(root, move_to_folder, origin_folder) -> str:
         Green(logging.info, f"Move Folder - Finish {new_path}")
         return new_path
     except BaseException as e:
-        Red(logging.error, e)
+        Red(logging.error, str(e))
         return ""
 
 
@@ -56,7 +55,7 @@ def merge_folder_name_move(path: str, name: str, need_del: bool = True) -> str:
         Green(logging.info, f"Merge Folder - Finish {new_path}")
         return new_path
     except BaseException as e:
-        Red(logging.error, e)
+        Red(logging.error, str(e))
         return ""
 
 
@@ -80,10 +79,9 @@ def extract_folder_top(path: str):
             if len(new_path) == 0:
                 continue
             white_folder.append(new_path)
-        else:
-            try:
-                os.rmdir(os_path.join(path, folder))
-            except BaseException as e:
-                Red(logging.error, e)
-                return
-            Green(logging.info, f"Extract Folder - Finish {extract_path}")
+        try:
+            os.rmdir(os_path.join(path, folder))
+        except BaseException as e:
+            Red(logging.error, str(e))
+            return
+        Green(logging.info, f"Extract Folder - Finish {extract_path}")
