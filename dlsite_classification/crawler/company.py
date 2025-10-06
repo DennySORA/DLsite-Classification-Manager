@@ -1,10 +1,11 @@
-import logging
 import asyncio
+import logging
 
 from bs4 import BeautifulSoup
 
 from dlsite_classification.common.regex import REGEX_RG
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red
+
 from .common import CommonCrawler
 
 
@@ -15,10 +16,12 @@ class DLsiteCompanyCrawler:
         self.info = list()
 
     def _get_text_url_in_a(self, meta: BeautifulSoup) -> tuple[str, str]:
-        try:
-            return [meta.a.text.replace("\n", ""), meta.a.get("href")]
-        except:
-            return ["", ""]
+        anchor = getattr(meta, "a", None)
+        if anchor is None:
+            return "", ""
+        text = anchor.text.replace("\n", "")
+        href = anchor.get("href") or ""
+        return text, href
 
     def _get_dlsite_company_url(self) -> str:
         return (
@@ -152,5 +155,4 @@ class DLsiteCompanyCrawler:
     def get_info(self):
         if len(self.info) != 0:
             return self.info
-        else:
-            return None
+        return None

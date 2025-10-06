@@ -1,5 +1,7 @@
+from typing import Any
+
 from pydantic import BaseModel
-from typing import Any, Optional, List
+
 
 conversion_table = {
     "code": "code",
@@ -34,54 +36,54 @@ conversion_table = {
 
 
 class Tag(BaseModel):
-    code: Optional[str] = None
-    star: Optional[tuple[int, str]] = None
-    title: Optional[dict[str, Any]] = None
-    company: Optional[dict[str, Any]] = None
-    introduction: Optional[str] = None
-    request_failed: Optional[str] = None
+    code: str | None = None
+    star: tuple[int, str] | None = None
+    title: dict[str, Any] | None = None
+    company: dict[str, Any] | None = None
+    introduction: str | None = None
+    request_failed: str | None = None
 
     # シリーズ名 - Series name
-    series: Optional[dict[str, Any]] = None
+    series: dict[str, Any] | None = None
     # ジャンル - Genre
-    genre: Optional[dict[str, Any]] = None
+    genre: dict[str, Any] | None = None
     # ファイル容量 - File capacity
-    file_capacity: Optional[dict[str, Any]] = None
+    file_capacity: dict[str, Any] | None = None
     # ファイル形式 - File format
-    file_format: Optional[dict[str, Any]] = None
+    file_format: dict[str, Any] | None = None
     # 作品形式 - Work format
-    work_format: Optional[dict[str, Any]] = None
+    work_format: dict[str, Any] | None = None
     # 声優 - Voice actor
-    voice_actor: Optional[dict[str, Any]] = None
+    voice_actor: dict[str, Any] | None = None
     # 年齢指定 - Age designation
-    age: Optional[dict[str, Any]] = None
+    age: dict[str, Any] | None = None
     # 販売日 - Sale date
-    sale_date: Optional[dict[str, Any]] = None
+    sale_date: dict[str, Any] | None = None
     # 更新情報 - Update
-    update_date: Optional[dict[str, Any]] = None
+    update_date: dict[str, Any] | None = None
     # 動作環境 - Operating environment
-    operating_environment: Optional[dict[str, Any]] = None
+    operating_environment: dict[str, Any] | None = None
     # イラスト - Illustration
-    illustration: Optional[dict[str, Any]] = None
+    illustration: dict[str, Any] | None = None
     # シナリオ - Scenario
-    scenario: Optional[dict[str, Any]] = None
+    scenario: dict[str, Any] | None = None
     # 作者 - Author
-    author: Optional[dict[str, Any]] = None
+    author: dict[str, Any] | None = None
     # ページ数 - Number of pages
-    pages: Optional[dict[str, Any]] = None
+    pages: dict[str, Any] | None = None
     # イベント - Event
-    event: Optional[dict[str, Any]] = None
+    event: dict[str, Any] | None = None
     # 音楽 - Music
-    music: Optional[dict[str, Any]] = None
+    music: dict[str, Any] | None = None
     # その他 - Other
-    other: Optional[dict[str, Any]] = None
+    other: dict[str, Any] | None = None
     # 対応言語 - Supported languages
-    languages: Optional[dict[str, Any]] = None
+    languages: dict[str, Any] | None = None
 
     # User custom fields
-    my_rating: Optional[str] = None  # User's personal rating (1-5 stars)
-    my_collection: Optional[str] = None  # User's collection category
-    my_collections: Optional[List[str]] = None  # User's multiple collection categories
+    my_rating: str | None = None  # User's personal rating (1-5 stars)
+    my_collection: str | None = None  # User's collection category
+    my_collections: list[str] | None = None  # User's multiple collection categories
 
 
 class WorkInfo(BaseModel):
@@ -94,7 +96,7 @@ class Work(BaseModel):
     path: str
     code: str
     name: str
-    info: Optional[WorkInfo] = None
+    info: WorkInfo | None = None
 
 
 class Company(BaseModel):

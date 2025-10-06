@@ -1,7 +1,7 @@
-import os
 import logging
+import os
 
-from dlsite_classification.spkg.logs import Red, Green
+from dlsite_classification.spkg.logs import Green, Red
 from dlsite_classification.tools.scan import get_folder_cla_struct
 
 
@@ -10,18 +10,19 @@ class FolderCompare:
         self.origin_path = origin_path
         self.compare_path = compare_path
 
-    def compare(self):
+    def compare(self) -> None:
         origin_folder_data = get_folder_cla_struct(self.origin_path)
 
-        for i in os.listdir(self.compare_path):
-            if origin_folder_data.get(i, None) == None:
+        for company in os.listdir(self.compare_path):
+            origin_company = origin_folder_data.get(company)
+            if origin_company is None:
                 continue
-            for j in os.listdir(os.path.join(self.compare_path, i)):
-                if origin_folder_data.get(i, dict()).get(j, None) == None:
+            for work in os.listdir(os.path.join(self.compare_path, company)):
+                if origin_company.get(work) is None:
                     continue
                 Red(
                     logging.error,
-                    f"[Duplicate] Company : 『{i}』 - work :『{j}』.",
-                    False,
+                    f"[Duplicate] Company : 『{company}』 - work :『{work}』.",
+                    stack_info=False,
                 )
         Green(logging.info, "Scan finish.")

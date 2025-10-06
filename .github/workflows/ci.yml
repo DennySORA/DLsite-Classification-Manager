@@ -1,0 +1,208 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop, "feat/**" ]
+  pull_request:
+    branches: [ main, develop, "feat/**" ]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  lint:
+    name: Lint & Static Analysis (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+
+      - name: Sync dependencies
+        run: uv sync --dev --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check --output-format=github .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Mypy strict type checking
+        run: uv run mypy dlsite_classification/ --strict --show-error-codes
+
+      - name: Security check with Bandit
+        run: |
+          set -euo pipefail
+          TARGET="dlsite_classification"
+          EXCLUDES="tests,dlsite_classification_web,node_modules,.venv,venv,.env"
+          echo "🔍 Running Bandit security scan..."
+
+          # Generate JSON artifact
+          uv run bandit -r "$TARGET" -x "$EXCLUDES" -f json -o bandit-report.json --skip B101,B601 || true
+
+          # Generate human-readable summary
+          uv run bandit -r "$TARGET" -x "$EXCLUDES" --severity-level low --confidence-level medium \
+            --skip B101,B601 -f txt -o bandit-summary.txt || true
+
+          echo "=== Bandit Security Scan Summary ==="
+          exit_code=0
+          uv run bandit -r "$TARGET" -x "$EXCLUDES" --severity-level high --confidence-level medium --skip B101,B601 || exit_code=$?
+
+          if [ "$exit_code" -eq 1 ]; then
+            echo "❌ High severity security issues found. Please review and fix."
+            exit 1
+          elif [ "$exit_code" -eq 0 ]; then
+            echo "✅ No high severity security issues found."
+          else
+            echo "⚠️  Low/Medium severity issues detected. Review recommended but not blocking."
+          fi
+
+      - name: Upload Bandit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-reports-${{ matrix.python-version }}
+          path: |
+            bandit-report.json
+            bandit-summary.txt
+
+  test:
+    name: Tests & Coverage (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+
+      - name: Sync dependencies
+        run: uv sync --dev --frozen
+
+      - name: Run standardized tests
+        run: ./run_tests.sh --html
+
+      - name: Generate coverage XML report
+        run: uv run coverage xml
+
+      - name: Generate coverage summary
+        run: uv run coverage report --show-missing
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          flags: python-${{ matrix.python-version }}
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov
+
+  security:
+    name: Bandit Deep Scan
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+
+      - name: Sync dependencies
+        run: uv sync --dev --frozen
+
+      - name: Comprehensive Bandit scan
+        run: |
+          set -euo pipefail
+          TARGET="dlsite_classification"
+          EXCLUDES="tests,dlsite_classification_web,node_modules,.venv,venv,.env"
+          echo "🔐 Running comprehensive security analysis..."
+
+          uv run bandit -r "$TARGET" -x "$EXCLUDES" -f json -o bandit-detailed.json -v --skip B101,B601 || true
+          uv run bandit -r "$TARGET" -x "$EXCLUDES" -f txt -o bandit-detailed.txt --skip B101,B601 || true
+          uv run bandit -r "$TARGET" -x "$EXCLUDES" -f xml -o bandit-detailed.xml --skip B101,B601 || true
+
+          echo "=== High Confidence Issues ==="
+          uv run bandit -r "$TARGET" -x "$EXCLUDES" --confidence-level high --severity-level medium --skip B101,B601 || true
+
+          echo "=== Full Issue Summary ==="
+          uv run bandit -r "$TARGET" -x "$EXCLUDES" --confidence-level low --severity-level low --skip B101,B601 || true
+
+          echo "📈 Security scan artifacts generated"
+
+      - name: Upload comprehensive Bandit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-detailed-reports
+          path: |
+            bandit-detailed.json
+            bandit-detailed.txt
+            bandit-detailed.xml
+
+  summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [ lint, test, security ]
+    if: always()
+    steps:
+      - name: Aggregate results
+        run: |
+          echo "=== CI Results Summary ==="
+          echo "Lint: ${{ needs.lint.result }}"
+          echo "Test: ${{ needs.test.result }}"
+          echo "Security: ${{ needs.security.result }}"
+
+          if [ "${{ needs.lint.result }}" = "success" ] && \
+             [ "${{ needs.test.result }}" = "success" ] && \
+             [ "${{ needs.security.result }}" = "success" ]; then
+            echo "✅ All checks passed!"
+            exit 0
+          else
+            echo "❌ Some checks failed. Please review the errors above."
+            exit 1
+          fi

@@ -1,0 +1,37 @@
+name: Gitleaks
+
+on:
+  push:
+    branches: [ main, develop, "feat/**" ]
+  pull_request:
+    branches: [ main, develop, "feat/**" ]
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks
+        run: |
+          set -euo pipefail
+          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest \
+            | grep "browser_download_url" \
+            | grep "linux_amd64.tar.gz" \
+            | cut -d '"' -f 4)
+          curl -sSL "$DOWNLOAD_URL" -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          rm -f gitleaks.tar.gz
+
+      - name: Run Gitleaks scan
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        run: gitleaks detect --source=. --no-banner --redact

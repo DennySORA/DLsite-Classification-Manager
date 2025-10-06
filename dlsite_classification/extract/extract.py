@@ -1,17 +1,16 @@
-import os
-import time
 import asyncio
 import logging
-
-from itertools import islice
+import os
+import time
 from collections import OrderedDict
+from itertools import islice
 
-from dlsite_classification.tools import raed_data
 from dlsite_classification.common.regex import REGEX_COMPANY_FOLDER, REGEX_RJ
-from dlsite_classification.spkg.logs import Green, Cyan
+from dlsite_classification.spkg.logs import Cyan, Green
 from dlsite_classification.spkg.sasync import SAsyncRunner
+from dlsite_classification.tools import raed_data
 
-from .structure import Company, Work, WorkInfo, Tag, conversion_table
+from .structure import Company, Tag, Work, WorkInfo, conversion_table
 
 
 class ExtractFolder:
@@ -85,8 +84,9 @@ class ExtractFolder:
         for origin_folder_path in os.listdir(self.path):
             await read_queue.put(self._scan_wrap(origin_folder_path))
         run_limit = read_queue.qsize()
-        if run_limit > 30:
-            run_limit = 30
+        run_limit = min(run_limit, 30)
+        if run_limit == 0:
+            return time.time() - start_time
         await sasync.run(run_limit)
         return time.time() - start_time
 
@@ -101,7 +101,10 @@ class ExtractFolder:
             work_folder_path = os.path.join(path, work_folder)
             try:
                 info_data = await self.scan_work(work_folder_path, code)
-            except:
+            except Exception as exc:
+                logging.exception(
+                    "Failed to scan work folder %s: %s", work_folder_path, exc
+                )
                 info_data = None
             result[work_folder] = Work(
                 name=name, path=work_folder_path, code=code, info=info_data
@@ -123,7 +126,7 @@ class ExtractFolder:
         try:
             tag = await self.make_tag(tags)
         except Exception as e:
-            logging.error(f"{path} - Error {e}")
+            logging.exception(f"{path} - Error {e}")
             # Create a minimal tag with available data
             minimal_data = {}
             for name, val in tags.items():
@@ -142,7 +145,7 @@ class ExtractFolder:
                                 int(data[0]),
                                 data[1] if len(data) == 2 else "",
                             )
-                        except:
+                        except (IndexError, ValueError):
                             minimal_data[eng_name] = None
                     else:
                         minimal_data[eng_name] = {i: True for i in data if i.strip()}
