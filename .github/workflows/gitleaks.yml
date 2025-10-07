@@ -18,20 +18,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Gitleaks
-        run: |
-          set -euo pipefail
-          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest \
-            | grep "browser_download_url" \
-            | grep "linux_amd64.tar.gz" \
-            | cut -d '"' -f 4)
-          curl -sSL "$DOWNLOAD_URL" -o gitleaks.tar.gz
-          tar -xzf gitleaks.tar.gz gitleaks
-          chmod +x gitleaks
-          sudo mv gitleaks /usr/local/bin/gitleaks
-          rm -f gitleaks.tar.gz
-
       - name: Run Gitleaks scan
+        uses: gitleaks/gitleaks-action@v2
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
-        run: gitleaks detect --source=. --no-banner --redact
