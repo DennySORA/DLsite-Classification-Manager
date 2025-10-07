@@ -15,6 +15,9 @@ permissions:
   security-events: write
   actions: read
 
+env:
+  UV_PYTHON: python
+
 jobs:
   lint:
     name: Lint & Static Analysis (Python ${{ matrix.python-version }})

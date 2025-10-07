@@ -44,6 +44,8 @@ class Folder:
             return
         if isinstance(data, str):
             values = [data]
+        elif isinstance(data, bytes):
+            values = [data.decode("utf-8", errors="ignore")]
         elif isinstance(data, Iterable):
             values = [str(item) for item in data if str(item)]
         else:
@@ -105,11 +107,17 @@ class Folder:
                     Yellow(logging.warning, f"Failed to merge tag {tag_file}: {e}")
 
     def _get_rename(self, code: str, is_company: bool = False) -> str:
-        # Get Title and company
-        title = self.file_info.get("title", list())[0]
-        company = self.file_info.get("company", list())
-        company_name = company[0]
-        company_code_name = REGEX_RG.findall(company[1])[0].replace("\n", "")
+        # Safely get title and company data
+        title_list = self.file_info.get("title") or []
+        title = title_list[0] if isinstance(title_list, list) and title_list else ""
+
+        company_list = self.file_info.get("company") or []
+        company_name = company_list[0] if len(company_list) > 0 else ""
+        company_href = company_list[1] if len(company_list) > 1 else ""
+
+        # Extract company code safely
+        rg_matches = REGEX_RG.findall(company_href or "")
+        company_code_name = (rg_matches[0] if rg_matches else "").replace("\n", "")
 
         if is_company:
             return os_path.join(
@@ -152,7 +160,9 @@ class Folder:
             with open(history_path, "a+", encoding="utf-8") as history_file:
                 history_file.write(self.path + "\n")
                 history_file.write(new_path + "\n")
-            os.rename(self.path, new_path)
+            # Use shutil.move for robust cross-device move
+            check_and_make_folder(os_path.dirname(new_path))
+            shutil.move(self.path, new_path)
         except Exception as exc:
             Red(logging.error, str(exc))
             return

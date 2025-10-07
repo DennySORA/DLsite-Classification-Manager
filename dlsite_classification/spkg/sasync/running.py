@@ -29,7 +29,7 @@ class SAsyncRunner:
                 try:
                     async with timeout(3):
                         component = await self.read.get()
-                except TimeoutError:
+                except asyncio.TimeoutError:
                     logging.info(f"{number} Pool Close.")
                     return
                 await component()

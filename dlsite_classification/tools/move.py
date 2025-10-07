@@ -79,8 +79,9 @@ def extract_folder_top(path: str):
             if len(new_path) == 0:
                 continue
             white_folder.append(new_path)
+        # Delete the extracted directory after processing
         try:
-            os.rmdir(os_path.join(path, folder))
+            os.rmdir(extract_path)
         except BaseException as e:
             Red(logging.error, str(e))
             return
