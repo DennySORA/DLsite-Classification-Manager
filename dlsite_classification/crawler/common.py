@@ -32,17 +32,15 @@ class CommonCrawler:
     async def get_request(
         cls, url: str, is_json: bool = False
     ) -> tuple[str, BeautifulSoup] | dict[str, Any]:
-        """Return tuple html and bs4."""
-
+        """Return tuple html and bs4, or JSON dict if is_json=True."""
         async with (
             aiohttp.ClientSession(headers=HEADERS) as session,
             session.get(url) as response,
         ):
-            if response.status == 200:
-                if is_json:
-                    return await response.json()
-                html = await response.text()
-                bs4 = BeautifulSoup(html, "lxml")
-            else:
+            if response.status != 200:
                 raise ValueError(f"{url} Request Fail!!")
-        return html, bs4
+            if is_json:
+                return await response.json()
+            html = await response.text()
+            bs4 = BeautifulSoup(html, "lxml")
+            return html, bs4

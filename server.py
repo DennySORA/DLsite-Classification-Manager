@@ -245,7 +245,7 @@ class SearchResponse(BaseModel):
 
 
 # Helper function to convert work data
-def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
+def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse | None:
     try:
         if not work.info or not work.info.tag:
             return None
@@ -346,7 +346,9 @@ def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
             my_collections=my_collections,
         )
     except Exception as e:
-        print(f"Error converting work {work.code}: {e}")
+        logging.exception(
+            "Error converting work to response for folder %s: %s", work_folder, e
+        )
         return None
 
 
@@ -510,15 +512,19 @@ async def get_works(
             if any(file_format.lower() in ff.lower() for ff in work.file_size)
         ]
 
-    # Sorting
+    # Sorting with safe rating conversion
+    def safe_rating(w: WorkResponse) -> int:
+        try:
+            return int(w.my_rating) if w.my_rating is not None else 0
+        except (ValueError, TypeError):
+            return 0
+
     if sort == "sale_date":
         filtered_works.sort(key=lambda x: x.sale_date or "", reverse=True)
     elif sort == "company":
         filtered_works.sort(key=lambda x: x.company.lower())
     elif sort == "rating":
-        filtered_works.sort(
-            key=lambda x: int(x.my_rating) if x.my_rating else 0, reverse=True
-        )
+        filtered_works.sort(key=safe_rating, reverse=True)
     elif sort == "collection":
         filtered_works.sort(key=lambda x: x.my_collection or "")
     else:  # title

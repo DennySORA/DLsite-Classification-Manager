@@ -6,20 +6,44 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DLsite Classification Manager is a high-performance DLsite works classification and management tool with a modern web interface and complete API functionality. It automatically extracts and manages metadata for DLsite content (identified by codes: RJ, BJ, VJ, RE, BE, VE).
 
-## Running Unit Tests
+## Code Quality Checks
 
-**IMPORTANT: Always run tests using the standardized script to ensure consistent results.**
+**CRITICAL: Always run these checks after ANY code changes before committing.**
 
-To verify unit tests after any code changes:
+### Required Quality Checks (Run in Order)
 
+1. **Format Code** (auto-fixes formatting issues):
+   ```bash
+   uv run ruff format .
+   ```
+
+2. **Lint and Auto-fix** (auto-fixes linting issues):
+   ```bash
+   uv run ruff check --fix .
+   ```
+
+3. **Type Check** (validates type hints):
+   ```bash
+   uv run mypy .
+   ```
+
+4. **Run Tests** (validates functionality):
+   ```bash
+   ./run_tests.sh
+   ```
+
+### Quick Quality Check Script
+
+Run all checks at once:
 ```bash
-./run_tests.sh
+uv run ruff format . && uv run ruff check --fix . && uv run mypy . && ./run_tests.sh
 ```
 
-This script ensures:
-- ✅ Tests are run with correct coverage settings
-- ✅ Only tested modules are measured (100% coverage for URL and security modules)
-- ✅ Consistent results between all developers
+**These checks ensure:**
+- ✅ Consistent code formatting (PEP 8 compliant)
+- ✅ No linting errors or code smells
+- ✅ Type safety and correctness
+- ✅ All tests pass with required coverage
 - ✅ Fast execution (~0.4 seconds for 81 tests)
 
 **Note**: If you see "bad interpreter" error on WSL/Linux, the file may have Windows line endings. Fix with:

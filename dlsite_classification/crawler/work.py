@@ -41,17 +41,17 @@ class DLsiteWorkCrawler:
         self.code = code
         return f"{base}{code}"
 
-    def _get_text_url_in_a(self, meta: BeautifulSoup | None) -> tuple[str, str]:
+    def _get_text_url_in_a(self, meta: BeautifulSoup | None) -> list[str]:
         if meta is None:
-            return "", ""
+            return ["", ""]
 
         anchor = meta.find("a")
         if anchor is None:
-            return "", ""
+            return ["", ""]
 
         text = anchor.text.replace("\n", "")
         href = anchor.get("href") or ""
-        return text, href
+        return [text, href]
 
     def _tag_convert_dict(self, tables: list) -> dict:
         result = dict()

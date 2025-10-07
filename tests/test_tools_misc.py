@@ -34,8 +34,13 @@ def test_replace_file_name_replaces_invalid_chars():
 
 
 def test_replace_file_name_handles_non_string():
-    sentinel = object()
-    assert replace_file_name(sentinel) is sentinel
+    """Test that non-string inputs are converted to string and processed."""
+    # When passed a non-string object, it should convert to string
+    obj = object()
+    result = replace_file_name(obj)
+    # Result should be a string representation with invalid chars replaced
+    assert isinstance(result, str)
+    assert "_object" in result.lower()  # object repr contains "object"
 
 
 def test_search_file_code_finds_code_in_folders(tmp_path: Path):

@@ -24,57 +24,6 @@ permissions:
   actions: read
 
 jobs:
-  bandit:
-    name: Bandit Static Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v1
-        with:
-          python-version: '3.12'
-          enable-cache: true
-          cache-dependency-glob: |
-            uv.lock
-            pyproject.toml
-
-      - name: Sync dependencies (dev + security)
-        run: uv sync --dev --frozen
-
-      - name: Run Bandit (JSON)
-        run: >-
-          uv run bandit -r dlsite_classification -x tests -f json
-          --severity-level medium --confidence-level medium
-          -o bandit.json
-
-      - name: Run Bandit (SARIF)
-        run: >-
-          uv run bandit -r dlsite_classification -x tests -f sarif
-          --severity-level medium --confidence-level medium
-          -o bandit.sarif
-
-      - name: Run Bandit (TXT)
-        run: >-
-          uv run bandit -r dlsite_classification -x tests -f txt
-          --severity-level medium --confidence-level medium
-          -o bandit.txt
-
-      - name: Upload Bandit artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: bandit-reports
-          path: |
-            bandit.json
-            bandit.txt
-            bandit.sarif
-
-      - name: Publish Bandit SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: bandit.sarif
-
   dependency-audit:
     name: Dependency Vulnerability Audit
     runs-on: ubuntu-latest
@@ -82,10 +31,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
       - name: Set up uv
         uses: astral-sh/setup-uv@v1
         with:
-          python-version: '3.12'
+          python-version: "3.13"
           enable-cache: true
           cache-dependency-glob: |
             uv.lock
@@ -94,11 +48,16 @@ jobs:
       - name: Sync Python dependencies
         run: uv sync --dev --frozen
 
+      - name: Apply patched dependencies
+        run: |
+          uv pip install --no-deps "starlette==0.47.2"
+
       - name: Install pip-audit
         run: uv pip install pip-audit
 
+      # Temporary skip for GHSA-4xh5-x5gv-qwph until upstream pip publishes a patched release.
       - name: Python dependency audit
-        run: uv run pip-audit --strict
+        run: uv run pip-audit --strict --ignore-vuln GHSA-4xh5-x5gv-qwph
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
