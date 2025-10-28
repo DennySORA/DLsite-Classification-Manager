@@ -2,12 +2,11 @@ import os
 
 
 def get_folder_cla_struct(path: str) -> dict[str, dict[str, str]]:
-    folder_structure = dict()
+    folder_structure: dict[str, dict[str, str]] = {}
 
-    for i in os.listdir(path):
-        if folder_structure.get(i, None) == None:
-            folder_structure[i] = dict()
-        for j in os.listdir(os.path.join(path, i)):
-            folder_structure[i][j] = os.path.join(path, i, j)
+    for company in os.listdir(path):
+        company_entries = folder_structure.setdefault(company, {})
+        for work in os.listdir(os.path.join(path, company)):
+            company_entries[work] = os.path.join(path, company, work)
 
     return folder_structure

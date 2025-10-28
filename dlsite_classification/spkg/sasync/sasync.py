@@ -1,10 +1,19 @@
-import signal
 import asyncio
 import logging
+import signal
+from collections.abc import Awaitable, Callable
+from typing import Any
+
+
+AsyncCallable = Callable[..., Awaitable[Any]]
 
 
 class SAsync:
-    def __init__(self, main_run=None, loop=None):
+    def __init__(
+        self,
+        main_run: AsyncCallable | None = None,
+        loop: asyncio.AbstractEventLoop | None = None,
+    ) -> None:
         if loop is None:
             try:
                 self.loop = asyncio.get_running_loop()
@@ -12,17 +21,18 @@ class SAsync:
                 self.loop = asyncio.get_event_loop()
         else:
             self.loop = loop
-        # -----------------------
         self.main_run = main_run
 
-    def stop_loop_on_completion(self, f):
+    def stop_loop_on_completion(self, _future: asyncio.Future[Any]) -> None:
         self.loop.stop()
 
-    def register_run(self, run_func):
+    def register_run(self, run_func: AsyncCallable) -> None:
         self.main_run = run_func
 
-    def run(self, *args, **kwargs) -> None:
-        async def runner():
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        async def runner() -> None:
+            if self.main_run is None:
+                return
             await self.main_run(*args, **kwargs)
 
         if self.main_run is None:

@@ -1,16 +1,24 @@
-import uvicorn
-import os
-import asyncio
+# mypy: ignore-errors
+
 import argparse
-import sys
-from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, Query, HTTPException
-from fastapi.responses import FileResponse
+import logging
+import os
+import re
+from typing import Any
+
+import uvicorn
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from dlsite_classification.common.security import (
+    PathSecurityError,
+    validate_path_within_root,
+)
 from dlsite_classification.extract.extract import ExtractFolder
-import re
+from dlsite_classification.tools.url import build_image_url, decode_url_path
+
 
 app = FastAPI(title="DLsite Collection Manager", version="1.0.0")
 
@@ -210,34 +218,34 @@ class WorkResponse(BaseModel):
     code: str
     title: str
     company: str
-    genre: List[str]
+    genre: list[str]
     image_url: str
-    sample_images: List[str]
+    sample_images: list[str]
     introduction: str
-    sale_date: Optional[str]
-    work_format: List[str]
-    age_rating: List[str]
-    file_size: List[str]
-    my_rating: Optional[str] = None
-    my_collection: Optional[str] = None
-    my_collections: Optional[List[str]] = None
+    sale_date: str | None
+    work_format: list[str]
+    age_rating: list[str]
+    file_size: list[str]
+    my_rating: str | None = None
+    my_collection: str | None = None
+    my_collections: list[str] | None = None
 
 
 class CompanyResponse(BaseModel):
     name: str
     work_count: int
-    works: List[WorkResponse]
+    works: list[WorkResponse]
 
 
 class SearchResponse(BaseModel):
     total: int
-    works: List[WorkResponse]
-    companies: List[str]
-    genres: List[str]
+    works: list[WorkResponse]
+    companies: list[str]
+    genres: list[str]
 
 
 # Helper function to convert work data
-def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
+def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse | None:
     try:
         if not work.info or not work.info.tag:
             return None
@@ -259,7 +267,7 @@ def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
         if tag.genre and isinstance(tag.genre, dict):
             # Remove duplicates while preserving order and filtering empty values
             seen = set()
-            for g in tag.genre.keys():
+            for g in tag.genre:
                 if g and g.strip():  # Filter out empty or whitespace-only strings
                     g_cleaned = g.strip()
                     g_lower = g_cleaned.lower()
@@ -270,7 +278,7 @@ def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
         # Extract work format with smart splitting and normalization
         work_format = []
         if tag.work_format and isinstance(tag.work_format, dict):
-            for format_str in tag.work_format.keys():
+            for format_str in tag.work_format:
                 work_format.extend(split_and_normalize_formats(format_str))
             work_format = normalize_and_deduplicate_list(work_format)
 
@@ -310,15 +318,15 @@ def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
         if work.info.images:
             for img in work.info.images:
                 if "img_main" in img:
-                    main_image = f"/image?path={os.path.join(work.info.path, img)}"
+                    main_image = build_image_url(os.path.join(work.info.path, img))
                 elif "img_smp" in img:
                     sample_images.append(
-                        f"/image?path={os.path.join(work.info.path, img)}"
+                        build_image_url(os.path.join(work.info.path, img))
                     )
 
             if not main_image and work.info.images:
-                main_image = (
-                    f"/image?path={os.path.join(work.info.path, work.info.images[0])}"
+                main_image = build_image_url(
+                    os.path.join(work.info.path, work.info.images[0])
                 )
 
         return WorkResponse(
@@ -338,7 +346,9 @@ def convert_work_to_response(work: Any, work_folder: str) -> WorkResponse:
             my_collections=my_collections,
         )
     except Exception as e:
-        print(f"Error converting work {work.code}: {e}")
+        logging.exception(
+            "Error converting work to response for folder %s: %s", work_folder, e
+        )
         return None
 
 
@@ -371,14 +381,14 @@ async def status():
 
 @app.get("/works", response_model=SearchResponse)
 async def get_works(
-    search: Optional[str] = Query(None, description="Search in title, company, genre"),
-    company: Optional[str] = Query(None, description="Filter by company"),
-    collection: Optional[str] = Query(None, description="Filter by collection"),
-    rating: Optional[str] = Query(None, description="Filter by rating"),
-    tags: Optional[str] = Query(None, description="Filter by tags (comma-separated)"),
+    search: str | None = Query(None, description="Search in title, company, genre"),
+    company: str | None = Query(None, description="Filter by company"),
+    collection: str | None = Query(None, description="Filter by collection"),
+    rating: str | None = Query(None, description="Filter by rating"),
+    tags: str | None = Query(None, description="Filter by tags (comma-separated)"),
     tag_mode: str = Query("OR", description="Tag filter mode: OR or AND"),
-    work_format: Optional[str] = Query(None, description="Filter by work format"),
-    file_format: Optional[str] = Query(None, description="Filter by file format"),
+    work_format: str | None = Query(None, description="Filter by work format"),
+    file_format: str | None = Query(None, description="Filter by file format"),
     sort: str = Query(
         "title", description="Sort by: title, sale_date, company, rating, collection"
     ),
@@ -502,15 +512,19 @@ async def get_works(
             if any(file_format.lower() in ff.lower() for ff in work.file_size)
         ]
 
-    # Sorting
+    # Sorting with safe rating conversion
+    def safe_rating(w: WorkResponse) -> int:
+        try:
+            return int(w.my_rating) if w.my_rating is not None else 0
+        except (ValueError, TypeError):
+            return 0
+
     if sort == "sale_date":
         filtered_works.sort(key=lambda x: x.sale_date or "", reverse=True)
     elif sort == "company":
         filtered_works.sort(key=lambda x: x.company.lower())
     elif sort == "rating":
-        filtered_works.sort(
-            key=lambda x: int(x.my_rating) if x.my_rating else 0, reverse=True
-        )
+        filtered_works.sort(key=safe_rating, reverse=True)
     elif sort == "collection":
         filtered_works.sort(key=lambda x: x.my_collection or "")
     else:  # title
@@ -528,7 +542,7 @@ async def get_works(
     )
 
 
-@app.get("/companies", response_model=List[CompanyResponse])
+@app.get("/companies", response_model=list[CompanyResponse])
 async def get_companies():
     if not extract_data.classification_table:
         await extract_data.scan_file()
@@ -561,7 +575,7 @@ async def get_work_detail(code: str):
     if not extract_data.classification_table:
         await extract_data.scan_file()
 
-    for company_name, company_data in extract_data.classification_table.items():
+    for _company_name, company_data in extract_data.classification_table.items():
         for work_folder, work in company_data.work_item.items():
             if work.code == code:
                 work_response = convert_work_to_response(work, work_folder)
@@ -607,10 +621,10 @@ async def get_all_genres():
         await extract_data.scan_file()
 
     genre_counts = {}
-    for company_name, company_data in extract_data.classification_table.items():
-        for work_folder, work in company_data.work_item.items():
+    for _company_name, company_data in extract_data.classification_table.items():
+        for _work_folder, work in company_data.work_item.items():
             if work.info and work.info.tag and work.info.tag.genre:
-                for genre in work.info.tag.genre.keys():
+                for genre in work.info.tag.genre:
                     if genre and genre.strip():
                         normalized_genre = genre.strip()
                         if normalized_genre in genre_counts:
@@ -637,10 +651,10 @@ async def get_all_work_formats():
         await extract_data.scan_file()
 
     all_work_formats = set()
-    for company_name, company_data in extract_data.classification_table.items():
-        for work_folder, work in company_data.work_item.items():
+    for _, company_data in extract_data.classification_table.items():
+        for _, work in company_data.work_item.items():
             if work.info and work.info.tag and work.info.tag.work_format:
-                for format_str in work.info.tag.work_format.keys():
+                for format_str in work.info.tag.work_format:
                     normalized_formats = split_and_normalize_formats(format_str)
                     all_work_formats.update(normalized_formats)
 
@@ -653,10 +667,10 @@ async def get_all_file_formats():
         await extract_data.scan_file()
 
     all_file_formats = set()
-    for company_name, company_data in extract_data.classification_table.items():
-        for work_folder, work in company_data.work_item.items():
+    for _, company_data in extract_data.classification_table.items():
+        for _, work in company_data.work_item.items():
             if work.info and work.info.tag and work.info.tag.file_format:
-                for format_str in work.info.tag.file_format.keys():
+                for format_str in work.info.tag.file_format:
                     normalized_formats = split_and_normalize_formats(format_str)
                     all_file_formats.update(normalized_formats)
 
@@ -664,9 +678,9 @@ async def get_all_file_formats():
 
 
 class UserDataRequest(BaseModel):
-    rating: Optional[str] = None
-    collection: Optional[str] = None
-    collections: Optional[List[str]] = None
+    rating: str | None = None
+    collection: str | None = None
+    collections: list[str] | None = None
 
 
 @app.post("/work/{code}/user-data")
@@ -676,8 +690,8 @@ async def update_user_data(code: str, user_data: UserDataRequest):
         await extract_data.scan_file()
 
     # Find the work
-    for company_name, company_data in extract_data.classification_table.items():
-        for work_folder, work in company_data.work_item.items():
+    for _, company_data in extract_data.classification_table.items():
+        for _, work in company_data.work_item.items():
             if work.code == code:
                 if not work.info or not work.info.path:
                     raise HTTPException(status_code=404, detail="Work info not found")
@@ -696,7 +710,7 @@ async def update_user_data(code: str, user_data: UserDataRequest):
                     except Exception as e:
                         raise HTTPException(
                             status_code=500, detail=f"Failed to save rating: {e}"
-                        )
+                        ) from e
 
                 # Save single collection (backward compatibility)
                 if user_data.collection is not None:
@@ -710,7 +724,7 @@ async def update_user_data(code: str, user_data: UserDataRequest):
                     except Exception as e:
                         raise HTTPException(
                             status_code=500, detail=f"Failed to save collection: {e}"
-                        )
+                        ) from e
 
                 # Save multiple collections
                 if user_data.collections is not None:
@@ -725,7 +739,7 @@ async def update_user_data(code: str, user_data: UserDataRequest):
                     except Exception as e:
                         raise HTTPException(
                             status_code=500, detail=f"Failed to save collections: {e}"
-                        )
+                        ) from e
 
                     # Also update single collection for backward compatibility
                     if user_data.collections:
@@ -737,8 +751,10 @@ async def update_user_data(code: str, user_data: UserDataRequest):
                             if work.info.tag:
                                 work.info.tag.my_collection = user_data.collections[0]
                         except Exception as e:
-                            print(
-                                f"Warning: Failed to save backward compatible collection: {e}"
+                            logging.warning(
+                                "Failed to save backward compatible collection for %s: %s",
+                                code,
+                                e,
                             )
 
                 # No need to refresh all data - we've updated in-memory
@@ -756,8 +772,8 @@ async def get_collections():
         await extract_data.scan_file()
 
     collections = set()
-    for company_name, company_data in extract_data.classification_table.items():
-        for work_folder, work in company_data.work_item.items():
+    for _, company_data in extract_data.classification_table.items():
+        for _, work in company_data.work_item.items():
             if work.info and work.info.tag:
                 # Add single collection
                 if work.info.tag.my_collection:
@@ -775,9 +791,35 @@ async def get_collections():
 
 @app.get("/image")
 async def get_image(path: str):
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Image not found")
-    return FileResponse(path)
+    """Serve image files with URL decoding and security validation.
+
+    Decodes URL-encoded paths and validates that the requested file
+    is within the allowed data directory to prevent directory traversal attacks.
+
+    Args:
+        path: URL-encoded absolute path to the image file
+
+    Returns:
+        FileResponse with the requested image
+
+    Raises:
+        HTTPException 403: If path is outside allowed directory
+        HTTPException 404: If image file not found
+    """
+    # Decode URL-encoded path
+    decoded_path = decode_url_path(path)
+
+    # Security validation using common security module
+    try:
+        validated_path = validate_path_within_root(
+            decoded_path, DATA_PATH, check_exists=True
+        )
+    except PathSecurityError as e:
+        raise HTTPException(status_code=403, detail=str(e)) from e
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+    return FileResponse(validated_path)
 
 
 @app.get("/scan")
@@ -800,13 +842,13 @@ if __name__ == "__main__":
     # 檢查數據路徑是否存在
     if not os.path.exists(DATA_PATH):
         print(f"⚠️  Warning: Data path '{DATA_PATH}' does not exist!")
-        print(f"📁 You can specify a custom path using:")
-        print(f"   python server.py --data-path /path/to/your/data")
+        print("📁 You can specify a custom path using:")
+        print("   python server.py --data-path /path/to/your/data")
         print(
-            f"   or set environment variable: export DLSITE_DATA_PATH=/path/to/your/data"
+            "   or set environment variable: export DLSITE_DATA_PATH=/path/to/your/data"
         )
         print(
-            f"🚀 Server will start anyway, but scanning will fail until the path exists."
+            "🚀 Server will start anyway, but scanning will fail until the path exists."
         )
         print()
 

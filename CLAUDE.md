@@ -6,6 +6,53 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DLsite Classification Manager is a high-performance DLsite works classification and management tool with a modern web interface and complete API functionality. It automatically extracts and manages metadata for DLsite content (identified by codes: RJ, BJ, VJ, RE, BE, VE).
 
+## Code Quality Checks
+
+**CRITICAL: Always run these checks after ANY code changes before committing.**
+
+### Required Quality Checks (Run in Order)
+
+1. **Format Code** (auto-fixes formatting issues):
+   ```bash
+   uv run ruff format .
+   ```
+
+2. **Lint and Auto-fix** (auto-fixes linting issues):
+   ```bash
+   uv run ruff check --fix .
+   ```
+
+3. **Type Check** (validates type hints):
+   ```bash
+   uv run mypy .
+   ```
+
+4. **Run Tests** (validates functionality):
+   ```bash
+   ./run_tests.sh
+   ```
+
+### Quick Quality Check Script
+
+Run all checks at once:
+```bash
+uv run ruff format . && uv run ruff check --fix . && uv run mypy . && ./run_tests.sh
+```
+
+**These checks ensure:**
+- ✅ Consistent code formatting (PEP 8 compliant)
+- ✅ No linting errors or code smells
+- ✅ Type safety and correctness
+- ✅ All tests pass with required coverage
+- ✅ Fast execution (~0.4 seconds for 81 tests)
+
+**Note**: If you see "bad interpreter" error on WSL/Linux, the file may have Windows line endings. Fix with:
+```bash
+sed -i 's/\r$//' run_tests.sh && chmod +x run_tests.sh
+```
+
+For detailed testing documentation, see [TESTING.md](TESTING.md).
+
 ## Architectural Philosophy & Design Principles
 
 ### Core Architecture Design
@@ -319,10 +366,14 @@ python main.py
 
 **Run Tests:**
 ```bash
-# When tests are added, always use uv
-uv run pytest
-uv run pytest tests/test_specific.py
-uv run pytest -v  # Verbose output
+# Always use the standardized test script
+./run_tests.sh
+
+# For verbose output
+./run_tests.sh --verbose
+
+# For HTML coverage report
+./run_tests.sh --html
 ```
 
 **Environment Variables:**
@@ -901,11 +952,11 @@ curl http://localhost:8001/status
 **Medium Priority**:
 1. Split `server.py` into modules
 2. Refactor `Folder` class into smaller classes
-3. Add basic unit tests for pure functions (tools, common) - **Use `uv run pytest`**
+3. Add basic unit tests for pure functions (tools, common) - **Use `./run_tests.sh`**
 4. Frontend: Extract reusable components
 
 **Low Priority**:
-1. Add integration tests - **Use `uv run pytest`**
+1. Add integration tests - **Use `./run_tests.sh`**
 2. Performance profiling and optimization
 3. Add caching layer (Redis) for large datasets - **Install with `uv pip install redis`**
 4. Database migration for better querying (SQLite/PostgreSQL) - **Install with `uv pip install sqlalchemy`**
@@ -927,8 +978,8 @@ uv run python server.py --data-path ./test_game_info
 # Run CLI tool
 uv run python main.py
 
-# Run tests (when added)
-uv run pytest -v
+# Run tests
+./run_tests.sh
 ```
 
 ### Adding Dependencies
@@ -948,24 +999,20 @@ echo "new-package==1.2.3" >> requirements.txt
 uv pip sync requirements.txt
 ```
 
-### Testing Workflow (When Tests Are Added)
+### Testing Workflow
 
 ```bash
-# Run all tests
-uv run pytest
+# Run all tests (standardized)
+./run_tests.sh
 
-# Run with coverage
-uv run pytest --cov=dlsite_classification --cov-report=html
+# Verbose output
+./run_tests.sh --verbose
 
-# Run specific test file
-uv run pytest tests/test_extract.py
+# Generate HTML coverage report
+./run_tests.sh --html
 
-# Run specific test function
-uv run pytest tests/test_extract.py::test_scan_work
-
-# Run tests in parallel (install pytest-xdist first)
-uv pip install pytest-xdist
-uv run pytest -n auto
+# Quick test (no coverage)
+./run_tests.sh --quick
 ```
 
 ### Virtual Environment Management
@@ -1018,8 +1065,8 @@ uv pip freeze > requirements.txt
 # 5. Run application to test
 uv run python server.py --data-path ./test_game_info
 
-# 6. Run tests (when added)
-uv run pytest
+# 6. Run tests
+./run_tests.sh
 
 # 7. Commit changes (including requirements.txt)
 git add requirements.txt dlsite_classification/

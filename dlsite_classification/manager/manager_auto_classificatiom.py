@@ -5,8 +5,8 @@ from dlsite_classification.classification import (
     classification_mode,
 )
 from dlsite_classification.crawler.work import DLsiteWorkCrawler
-from dlsite_classification.spkg.sasync import SAsyncRunner
 from dlsite_classification.spkg.logs import Blue, Cyan, Green, Red
+from dlsite_classification.spkg.sasync import SAsyncRunner
 
 
 async def classification_depth_one_folder_func(path=None):
@@ -38,8 +38,7 @@ async def classification_depth_one_folder_func(path=None):
     Blue(logging.info, "==========End Create Can Crawler Folder==========")
 
     # await run
-    if need_run_func_count > 10:
-        need_run_func_count = 10
+    need_run_func_count = min(need_run_func_count, 10)
     await sasync.run(need_run_func_count)
 
 
