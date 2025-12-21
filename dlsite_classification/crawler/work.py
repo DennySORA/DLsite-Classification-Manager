@@ -1,6 +1,8 @@
 import logging
+from typing import Any
 
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 from dlsite_classification.common.dlsite import BJ_WEBPATH, RJ_WEBPATH, VJ_WEBPATH
 from dlsite_classification.common.regex import REGEX_RJ
@@ -10,15 +12,15 @@ from .common import CommonCrawler
 
 
 class DLsiteWorkCrawler:
-    def __init__(self, code="", title=""):
+    def __init__(self, code: str = "", title: str = "") -> None:
         self.code = code
         self.title = title
 
-        self.html = None
-        self.bs4 = None
-        self.info: dict = dict()
+        self.html: str | None = None
+        self.bs4: BeautifulSoup | None = None
+        self.info: dict[str, Any] = {}
 
-    def _get_dlsite_url(self):
+    def _get_dlsite_url(self) -> str:
         code = (self.code or "").strip().upper()
         if not code:
             Red(logging.warning, "==========Crawler DLsite Empty Code Fail.==========")
@@ -41,7 +43,7 @@ class DLsiteWorkCrawler:
         self.code = code
         return f"{base}{code}"
 
-    def _get_text_url_in_a(self, meta: BeautifulSoup | None) -> list[str]:
+    def _get_text_url_in_a(self, meta: Tag | None) -> list[str]:
         if meta is None:
             return ["", ""]
 
@@ -53,13 +55,13 @@ class DLsiteWorkCrawler:
         href = anchor.get("href") or ""
         return [text, href]
 
-    def _tag_convert_dict(self, tables: list) -> dict:
-        result = dict()
+    def _tag_convert_dict(self, tables: list[Tag]) -> dict[str, Tag]:
+        result: dict[str, Tag] = {}
         for tab in tables:
             result[tab.th.text] = tab.td
         return result
 
-    async def get_use_code(self):
+    async def get_use_code(self) -> None:
         Cyan(logging.info, f"==========Start Crawler DLsite {self.code} Code==========")
         url = self._get_dlsite_url()
         Green(logging.info, f"Request DLsite {self.code} code.")
@@ -77,12 +79,12 @@ class DLsiteWorkCrawler:
         self.title = self.info.get("title", "")
         Blue(logging.info, f"==========End Crawler DLsite {self.code} Code==========")
 
-    async def format(self, bs4, url) -> dict:
+    async def format(self, bs4: BeautifulSoup | None, url: str) -> dict[str, Any]:
         Cyan(
             logging.info,
             f"==========Start Format Crawler DLsite {self.code} Code==========",
         )
-        info = dict()
+        info: dict[str, Any] = {}
         # Get title and code
         if bs4 is None:
             raise ValueError("Empty response body")
@@ -160,7 +162,7 @@ class DLsiteWorkCrawler:
         )
         return info
 
-    def get_info(self):
+    def get_info(self) -> dict[str, Any] | None:
         if len(self.info) != 0:
             return self.info
         return None
