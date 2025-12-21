@@ -2,176 +2,146 @@
 
 Languages: [English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
 
-A high-performance DLsite work classification and management tool with a modern Web UI and complete API.
+A high-performance DLsite works classifier and collection manager with a FastAPI
+backend and a Nuxt 3 web UI.
 
 ## 🌟 Features
 
-- High-Performance Processing: async/await for efficient crawling and file processing
-- Smart Code Extraction: auto-detects DLsite codes (RJ, BJ, VJ, RE, BE, VE)
-- Complete Metadata: titles, circles, genres, images, descriptions, etc.
-- Modern Web Interface: Nuxt.js-based responsive frontend
-- Powerful API: RESTful API for search, filtering, sorting
-- User Collections: personal ratings and collection categories
-- Multiple Views: grid and list modes
-- Intelligent Search: multi-field search with advanced filters
+- Async crawler and file processing
+- Interactive CLI workflows: classify, update, validate, archive
+- FastAPI REST API with search, filters, pagination, and metadata
+- Nuxt 3 UI for browsing, ratings, and collections
+- Company archive tools to fetch full catalogs
+- Tag-file storage (`*.tag`) with no database requirement
 
 ## 🛠️ Requirements
 
-- Python 3.8+
-- Node.js 16+
-- Yarn or npm
+- Python 3.10+
+- Node.js 18+
+- uv
+- Yarn (or npm/pnpm)
 
 ## 📦 Installation
 
-1) Clone
+### Backend
+
 ```
-git clone https://github.com/your-username/dlsite-classification.git
-cd dlsite-classification
+uv venv
+source .venv/bin/activate
+uv sync
 ```
 
-2) Backend deps
-```
-pip install -r requirements.txt
-```
+### Frontend
 
-3) Frontend deps
 ```
 cd dlsite_classification_web
 yarn install
-# or npm install
 ```
 
 ## 🚀 Usage
 
-### Start backend
+### CLI (interactive)
 
-1. CLI classifier (interactive)
 ```
-python main.py
+uv run python main.py
 ```
 
-2. Web API server (port 8001)
+### API server
+
 ```
-# Default
-python server.py
+uv run python server.py
+```
 
-# Specify data path
-python server.py --data-path /path/to/your/dlsite/data
+Custom data path / host / port:
 
-# Custom host/port
-python server.py --data-path ./test_game_info --port 8080 --host 127.0.0.1
+```
+uv run python server.py --data-path /path/to/your/dlsite/data --host 0.0.0.0 --port 8001
+```
 
-# With environment variable
+Set `DLSITE_DATA_PATH` to pin the data directory:
+
+```
 export DLSITE_DATA_PATH=/path/to/your/dlsite/data
-python server.py
 ```
 
-### Start frontend
+### Frontend
 
 ```
 cd dlsite_classification_web
-
-# Dev
 yarn dev
-
-# Prod
-yarn build
-yarn preview
 ```
 
-Open `http://localhost:3000` or `http://localhost:3001`.
+Open `http://localhost:3000` (or `http://localhost:3001` if 3000 is taken).
+The UI expects the API at `http://localhost:8001`.
 
-## 🎯 How-To
+## 🔧 Data Path Priority
 
-### Basic flow
+1) `--data-path`
+2) `DLSITE_DATA_PATH`
+3) Defaults (first existing):
+   - `./test_game_info`
+   - `/mnt/d/R18/DLsite`
+   - `./data`
 
-1) Prepare data folders
-2) Run `python main.py` and choose options
-3) Use the web UI to browse results
+## 📡 API Endpoints
 
-### Web UI features
+- `GET /` / `GET /status`
+- `GET /works` (search, filter, sort, paginate)
+- `GET /work/{code}`
+- `GET /companies` / `GET /companies/list`
+- `GET /company/{company_id}/works-status`
+- `POST /company/{company_id}/archive`
+- `GET /company/{company_id}/archive-info`
+- `GET /genres` / `GET /work-formats` / `GET /file-formats`
+- `GET /collections`
+- `POST /work/{code}/user-data`
+- `GET /image?path=<url-encoded-path>`
+- `GET /scan`
 
-- Search by keyword
-- Filter by circle, genre, collection, etc.
-- Toggle grid/list views
-- View work details
-- Set ratings and collections
+Swagger UI: `http://localhost:8001/docs`
 
 ## 📊 Data Format
 
 ```
-[CircleName]_[CircleID]/
-├── [WorkID]_[CircleName]_[CircleID] Work Title/
-│   ├── [WorkID]_info/
-│   │   ├── [WorkID]_img_main.jpg     # Main image
-│   │   ├── [WorkID]_img_smp1.jpg     # Sample image
-│   │   ├── code.tag                  # Work code
-│   │   ├── title.tag                 # Work title
-│   │   ├── company.tag               # Circle info
-│   │   └── ... other tag files
+[CompanyName]_[CompanyID]/
+├── [WorkID]_[CompanyName]_[CompanyID] Work Title/
+│   └── [WorkID]_info/
+│       ├── [WorkID]_img_main.jpg
+│       ├── [WorkID]_img_smp1.jpg
+│       ├── code.tag
+│       ├── title.tag
+│       ├── company.tag
+│       └── ... other tag files
+└── ARCHIVE/
+    └── RJ123456_info/
+        ├── title.tag
+        └── ... archived metadata
 ```
 
-## 🔧 Configuration
-
-### Data path
-
-Priority order:
-
-1) Command line
-```
-python server.py --data-path /path/to/your/dlsite/data
-```
-
-2) Environment variable
-```
-export DLSITE_DATA_PATH=/path/to/your/dlsite/data
-python server.py
-```
-
-3) Defaults (checked in order)
-- `./test_game_info`
-- `/mnt/d/R18/DLsite`
-- `./data`
-
-### Server
+## 🧪 Development
 
 ```
-# Port
-python server.py --port 8080
-
-# Host
-python server.py --host 127.0.0.1
-
-# Full config
-python server.py --data-path ./data --port 8080 --host 0.0.0.0
+uv run ruff check --fix .
+uv run ruff format .
+uv run mypy .
+./run_tests.sh
 ```
 
-### CLI arguments
+If you see a WSL "bad interpreter" error:
 
-- `--data-path, -d`: Data folder path
-- `--port, -p`: Server port (default 8001)
-- `--host`: Server host (default 0.0.0.0)
-- `--help`: Show help
+```
+sed -i 's/\r$//' run_tests.sh && chmod +x run_tests.sh
+```
 
-## 📡 API Endpoints
+## 📸 Web UI Preview
 
-- `GET /works`
-- `GET /work/{code}`
-- `GET /companies`
-- `GET /genres`
-- `POST /work/{code}/user-data`
-- `GET /image?path=<path>`
+![Web Demo 1](doc/1.png)
+![Web Demo 2](doc/2.png)
+![Web Demo 3](doc/3.png)
+![Web Demo 4](doc/4.png)
 
 ## 🔗 Links
 
-- Project Home: https://github.com/your-username/dlsite-classification
-- Issues: https://github.com/your-username/dlsite-classification/issues
+- Project Home: https://github.com/DennySORA/DLsite-Classification-Manager
+- Issues: https://github.com/DennySORA/DLsite-Classification-Manager/issues
 - License: LICENSE
-
-## 🤝 Contributing
-
-Pull Requests and Issues are welcome!
-
-## 📄 License
-
-MIT License — see `LICENSE`.
